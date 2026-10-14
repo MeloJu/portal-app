@@ -1,8 +1,9 @@
 package dev.l2.api;
 
 import dev.l2.api.link.Link;
-import dev.l2.api.security.SecurityEvent;
-import dev.l2.api.security.SecurityEventKind;
+import dev.l2.api.link.LinkState;
+import dev.l2.api.security.BlockedEvent;
+import dev.l2.api.security.BlockedEventReason;
 import dev.l2.api.travel.Travel;
 import dev.l2.api.user.User;
 import jakarta.persistence.EntityManager;
@@ -13,13 +14,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * O contexto sobe com ddl-auto=validate, logo este teste falha se a V1__init.sql e as
- * entidades divergirem. Alem disso cobre as constraints que carregam decisao de seguranca.
- */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Transactional
@@ -30,7 +29,7 @@ class DomainMappingTests {
 
 	private User persistedUser(String email) {
 		User user = new User(email, "$2a$10$abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMN", "Ana");
-		entityManager.persist(user);
+		this.entityManager.persist(user);
 		return user;
 	}
 
@@ -38,27 +37,28 @@ class DomainMappingTests {
 	void persistsTheWholeGraph() {
 		User owner = persistedUser("ana@example.com");
 		Link link = new Link(owner, "nebulosa", "https://example.com/campanha", "Campanha Nebulosa");
-		entityManager.persist(link);
-		Travel travel = new Travel(link, "https://x.com/post", "Mozilla/5.0", "BR");
-		entityManager.persist(travel);
-		SecurityEvent event = SecurityEvent.of(SecurityEventKind.RATE_LIMIT, owner, link, "6 req/s");
-		entityManager.persist(event);
-		entityManager.flush();
+		this.entityManager.persist(link);
+		Travel travel = new Travel(link, "https://x.com/post", "Mozilla/5.0", "BR", false);
+		this.entityManager.persist(travel);
+		BlockedEvent event = BlockedEvent.of(BlockedEventReason.RATE_LIMIT, owner, link, "6 req/s");
+		this.entityManager.persist(event);
+		this.entityManager.flush();
 
 		assertThat(owner.getId()).isNotNull();
 		assertThat(link.getId()).isNotNull();
 		assertThat(link.getCreatedAt()).isNotNull();
-		assertThat(link.isActive()).isTrue();
-		assertThat(travel.getOccurredAt()).isNotNull();
-		assertThat(event.getKind()).isEqualTo(SecurityEventKind.RATE_LIMIT);
+		assertThat(link.isPaused()).isFalse();
+		assertThat(link.getTravelCount()).isZero();
+		assertThat(travel.isBot()).isFalse();
+		assertThat(event.getReason()).isEqualTo(BlockedEventReason.RATE_LIMIT);
 	}
 
 	@Test
 	void rejectsTargetUrlOutsideHttpAndHttps() {
 		User owner = persistedUser("bruno@example.com");
-		entityManager.persist(new Link(owner, "xss-try", "javascript:alert(document.cookie)", null));
+		this.entityManager.persist(new Link(owner, "xss-try", "javascript:alert(document.cookie)", null));
 
-		assertThatThrownBy(entityManager::flush)
+		assertThatThrownBy(this.entityManager::flush)
 				.isInstanceOf(ConstraintViolationException.class)
 				.extracting(violation -> ((ConstraintViolationException) violation).getConstraintName())
 				.isEqualTo("links_target_url_scheme");
@@ -67,10 +67,10 @@ class DomainMappingTests {
 	@Test
 	void rejectsDuplicatedCode() {
 		User owner = persistedUser("carla@example.com");
-		entityManager.persist(new Link(owner, "orbit-live", "https://example.com/a", null));
-		entityManager.persist(new Link(owner, "orbit-live", "https://example.com/b", null));
+		this.entityManager.persist(new Link(owner, "orbit-live", "https://example.com/a", null));
+		this.entityManager.persist(new Link(owner, "orbit-live", "https://example.com/b", null));
 
-		assertThatThrownBy(entityManager::flush)
+		assertThatThrownBy(this.entityManager::flush)
 				.isInstanceOf(ConstraintViolationException.class)
 				.extracting(violation -> ((ConstraintViolationException) violation).getConstraintName())
 				.isEqualTo("links_code_unique");
@@ -80,10 +80,52 @@ class DomainMappingTests {
 	void rejectsUppercaseEmail() {
 		persistedUser("Dora@Example.com");
 
-		assertThatThrownBy(entityManager::flush)
+		assertThatThrownBy(this.entityManager::flush)
 				.isInstanceOf(ConstraintViolationException.class)
 				.extracting(violation -> ((ConstraintViolationException) violation).getConstraintName())
 				.isEqualTo("users_email_lowercase");
+	}
+
+	@Test
+	void rejectsAliasWithUnderscore() {
+		User owner = persistedUser("elisa@example.com");
+		this.entityManager.persist(new Link(owner, "nao_permitido", "https://example.com/a", null));
+
+		assertThatThrownBy(this.entityManager::flush)
+				.isInstanceOf(ConstraintViolationException.class)
+				.extracting(violation -> ((ConstraintViolationException) violation).getConstraintName())
+				.isEqualTo("links_code_format");
+	}
+
+	@Test
+	void isClosedWhenMaxTravelsIsReached() {
+		User owner = persistedUser("gabi@example.com");
+		Link link = new Link(owner, "limite-um", "https://example.com/a", null);
+		link.setMaxTravels(1);
+		this.entityManager.persist(link);
+		this.entityManager.flush();
+
+		this.entityManager.createNativeQuery("update links set travel_count = 1 where id = :id")
+				.setParameter("id", link.getId())
+				.executeUpdate();
+		this.entityManager.refresh(link);
+
+		assertThat(link.getTravelCount()).isEqualTo(1);
+		assertThat(link.isExhausted()).isTrue();
+		assertThat(link.state(Instant.now())).isEqualTo(LinkState.CLOSED);
+	}
+
+	@Test
+	void rejectsMaxTravelsBelowOne() {
+		User owner = persistedUser("fabio@example.com");
+		Link link = new Link(owner, "limite-zero", "https://example.com/a", null);
+		link.setMaxTravels(0);
+		this.entityManager.persist(link);
+
+		assertThatThrownBy(this.entityManager::flush)
+				.isInstanceOf(ConstraintViolationException.class)
+				.extracting(violation -> ((ConstraintViolationException) violation).getConstraintName())
+				.isEqualTo("links_max_travels_positive");
 	}
 
 }

@@ -5,7 +5,7 @@ Monorepo do projeto: frontend React e backend Spring Boot no mesmo repositório.
 | Pasta | Stack | Docs |
 | --- | --- | --- |
 | [`frontend/`](frontend/README.md) | React 19 + Vite + Tailwind v4 + React Router 7, testes com Vitest | `frontend/README.md` |
-| [`backend/`](backend/) | Spring Boot 4 + Java 21, PostgreSQL via JPA/Flyway, OAuth2 resource server | `backend/docs/` |
+| [`backend/`](backend/) | Spring Boot 4 + Java 21, PostgreSQL via JPA/Flyway, OAuth2 resource server | `backend/docs/`, [`docs/openapi.yaml`](docs/openapi.yaml) |
 | [`tools-api/`](tools-api/) | Node 22 + Express: bypass de encurtadores e proxy do VirusTotal | `tools-api/.env.example` |
 
 ## Como rodar

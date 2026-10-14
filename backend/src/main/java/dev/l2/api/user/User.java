@@ -27,8 +27,8 @@ public class User {
 	@Column(name = "password_hash", nullable = false, length = 72)
 	private String passwordHash;
 
-	@Column(name = "display_name", length = 80)
-	private String displayName;
+	@Column(nullable = false, length = 120)
+	private String name;
 
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
@@ -42,10 +42,10 @@ public class User {
 		// exigido pelo JPA
 	}
 
-	public User(String email, String passwordHash, String displayName) {
+	public User(String email, String passwordHash, String name) {
 		this.email = email;
 		this.passwordHash = passwordHash;
-		this.displayName = displayName;
+		this.name = name;
 	}
 
 	public UUID getId() {
@@ -64,12 +64,12 @@ public class User {
 		this.passwordHash = passwordHash;
 	}
 
-	public String getDisplayName() {
-		return this.displayName;
+	public String getName() {
+		return this.name;
 	}
 
-	public void setDisplayName(String displayName) {
-		this.displayName = displayName;
+	public void setName(String name) {
+		this.name = name;
 	}
 
 	public Instant getCreatedAt() {

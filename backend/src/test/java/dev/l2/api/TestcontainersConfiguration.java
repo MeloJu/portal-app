@@ -11,11 +11,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 @TestConfiguration(proxyBeanMethods = false)
-class TestcontainersConfiguration {
+public class TestcontainersConfiguration {
 
 	@Bean
 	@ServiceConnection
-	PostgreSQLContainer postgresContainer() {
+	public PostgreSQLContainer postgresContainer() {
 		return new PostgreSQLContainer(DockerImageName.parse("postgres:18-alpine"));
 	}
 

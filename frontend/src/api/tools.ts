@@ -1,12 +1,19 @@
 /** Cliente do tools-api (bypass de encurtadores e análise de segurança). */
 
-/** kind "decoded": o próximo endereço foi lido do próprio link, sem requisição (status 0). */
-export type Hop = { url: string; status: number; kind?: "decoded" };
+/**
+ * kind "decoded": o próximo endereço foi lido do próprio link, sem requisição (status 0).
+ * kind "page": o próximo endereço foi lido do HTML da página (meta refresh ou script).
+ * kind "browser": o próximo endereço veio da página aberta no navegador da Lumi (scripts e timers).
+ * kind "provider": o próximo endereço veio do serviço externo de bypass (ver provider).
+ */
+export type Hop = { url: string; status: number; kind?: "decoded" | "page" | "browser" | "provider" };
 export type UnshortenResult = {
   originalUrl: string;
   finalUrl: string;
   hops: Hop[];
   resolvedBy: string;
+  /** Serviço externo que revelou o destino: a tela dá o crédito. */
+  provider?: { name: string; site: string };
 };
 
 export type Verdict = "clean" | "suspicious" | "malicious";

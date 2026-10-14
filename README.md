@@ -28,3 +28,15 @@ Os PNGs são versionados com Git LFS (`git lfs install` antes do primeiro clone/
 - Integrar a API do VirusTotal (análise de URLs).
 - Substituir o link externo do Bypass City por um bypass de encurtadores próprio (rota "Fechar portal").
 - Trocar os dados mockados (portais, métricas, login) pela API do backend.
+
+## tools-api (bypass e VirusTotal)
+
+Serviço Node em `tools-api/` com `POST /tools/unshorten` (segue redirecionamentos no servidor, com proteção SSRF) e `POST /tools/scan` (proxy do VirusTotal, a chave fica só no servidor).
+
+```
+cd tools-api && cp .env.example .env   # preencha VT_API_KEY
+npm install && npm run dev             # http://localhost:3001
+npm test
+```
+
+Em dev, o Vite encaminha `/tools/*` para `localhost:3001`.

@@ -19,8 +19,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Entity
-@Table(name = "security_events")
-public class SecurityEvent {
+@Table(name = "blocked_events")
+public class BlockedEvent {
 
 	@Id
 	@UuidGenerator(style = UuidGenerator.Style.TIME)
@@ -29,7 +29,7 @@ public class SecurityEvent {
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 32, updatable = false)
-	private SecurityEventKind kind;
+	private BlockedEventReason reason;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "user_id", updatable = false)
@@ -46,27 +46,27 @@ public class SecurityEvent {
 	@Column(name = "occurred_at", nullable = false, updatable = false)
 	private Instant occurredAt;
 
-	protected SecurityEvent() {
+	protected BlockedEvent() {
 		// exigido pelo JPA
 	}
 
-	private SecurityEvent(SecurityEventKind kind, User user, Link link, String detail) {
-		this.kind = kind;
+	private BlockedEvent(BlockedEventReason reason, User user, Link link, String detail) {
+		this.reason = reason;
 		this.user = user;
 		this.link = link;
 		this.detail = detail;
 	}
 
-	public static SecurityEvent of(SecurityEventKind kind, User user, Link link, String detail) {
-		return new SecurityEvent(kind, user, link, detail);
+	public static BlockedEvent of(BlockedEventReason reason, User user, Link link, String detail) {
+		return new BlockedEvent(reason, user, link, detail);
 	}
 
 	public UUID getId() {
 		return this.id;
 	}
 
-	public SecurityEventKind getKind() {
-		return this.kind;
+	public BlockedEventReason getReason() {
+		return this.reason;
 	}
 
 	public User getUser() {
@@ -90,7 +90,7 @@ public class SecurityEvent {
 		if (this == other) {
 			return true;
 		}
-		if (!(other instanceof SecurityEvent event)) {
+		if (!(other instanceof BlockedEvent event)) {
 			return false;
 		}
 		return this.id != null && this.id.equals(event.id);

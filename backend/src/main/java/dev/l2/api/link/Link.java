@@ -43,10 +43,19 @@ public class Link {
 	private String title;
 
 	@Column(nullable = false)
-	private boolean active = true;
+	private boolean paused;
 
 	@Column(name = "expires_at")
 	private Instant expiresAt;
+
+	@Column(name = "max_travels")
+	private Integer maxTravels;
+
+	@Column(name = "travel_count", nullable = false)
+	private int travelCount;
+
+	@Column(name = "closed_at")
+	private Instant closedAt;
 
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
@@ -65,6 +74,25 @@ public class Link {
 		this.code = code;
 		this.targetUrl = targetUrl;
 		this.title = title;
+	}
+
+	public LinkState state(Instant now) {
+		if (this.closedAt != null || isExpired(now) || isExhausted()) {
+			return LinkState.CLOSED;
+		}
+		return this.paused ? LinkState.PAUSED : LinkState.ACTIVE;
+	}
+
+	public boolean isExpired(Instant now) {
+		return this.expiresAt != null && !this.expiresAt.isAfter(now);
+	}
+
+	public boolean isExhausted() {
+		return this.maxTravels != null && this.travelCount >= this.maxTravels;
+	}
+
+	public void close(Instant when) {
+		this.closedAt = when;
 	}
 
 	public UUID getId() {
@@ -95,12 +123,12 @@ public class Link {
 		this.title = title;
 	}
 
-	public boolean isActive() {
-		return this.active;
+	public boolean isPaused() {
+		return this.paused;
 	}
 
-	public void setActive(boolean active) {
-		this.active = active;
+	public void setPaused(boolean paused) {
+		this.paused = paused;
 	}
 
 	public Instant getExpiresAt() {
@@ -109,6 +137,22 @@ public class Link {
 
 	public void setExpiresAt(Instant expiresAt) {
 		this.expiresAt = expiresAt;
+	}
+
+	public Integer getMaxTravels() {
+		return this.maxTravels;
+	}
+
+	public void setMaxTravels(Integer maxTravels) {
+		this.maxTravels = maxTravels;
+	}
+
+	public int getTravelCount() {
+		return this.travelCount;
+	}
+
+	public Instant getClosedAt() {
+		return this.closedAt;
 	}
 
 	public Instant getCreatedAt() {

@@ -41,15 +41,20 @@ public class Travel {
 	@Column(length = 2)
 	private String country;
 
+	/** BotDetector no User-Agent: LinkStats separa humanos de robos. */
+	@Column(nullable = false)
+	private boolean bot;
+
 	protected Travel() {
 		// exigido pelo JPA
 	}
 
-	public Travel(Link link, String referrer, String userAgent, String country) {
+	public Travel(Link link, String referrer, String userAgent, String country, boolean bot) {
 		this.link = link;
 		this.referrer = referrer;
 		this.userAgent = userAgent;
 		this.country = country;
+		this.bot = bot;
 	}
 
 	public UUID getId() {
@@ -74,6 +79,10 @@ public class Travel {
 
 	public String getCountry() {
 		return this.country;
+	}
+
+	public boolean isBot() {
+		return this.bot;
 	}
 
 	@Override

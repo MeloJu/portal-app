@@ -92,6 +92,40 @@ describe("unshorten", () => {
     expect(err.details).toEqual({ gateUrl: "https://work.ink/1abc/destino" });
   });
 
+  it("revela o destino embutido em link com anúncio sem acessar o serviço", async () => {
+    const dynamic = "https://link-to.net/65354/941.87/dynamic?r=aHR0cHM6Ly9nb29nbGUuY29t";
+    const requested: string[] = [];
+    const fetchHop: HopFetcher = async (url) => (requested.push(url), { status: 200, location: null });
+
+    const r = await unshorten(dynamic, { fetchHop });
+    expect(r.finalUrl).toBe("https://google.com/");
+    expect(r.resolvedBy).toBe("decoded");
+    expect(r.hops[0]).toEqual({ url: dynamic, status: 0, kind: "decoded" });
+    expect(requested).toEqual(["https://google.com/"]);
+  });
+
+  it("continua seguindo redirecionamentos depois de decodificar", async () => {
+    const dynamic = `https://link-to.net/1/2/dynamic?r=${Buffer.from("https://bit.ly/z").toString("base64")}`;
+    const r = await unshorten(dynamic, {
+      fetchHop: fake({ "https://bit.ly/z": [301, "https://exemplo.com/final"], "https://exemplo.com/final": [200, null] }),
+    });
+    expect(r.finalUrl).toBe("https://exemplo.com/final");
+    expect(r.hops.map((h) => h.status)).toEqual([0, 301, 200]);
+  });
+
+  it("não decodifica para host interno (SSRF)", async () => {
+    const dynamic = `https://link-to.net/1/2/dynamic?r=${Buffer.from("http://169.254.169.254/latest").toString("base64")}`;
+    expect(await code(unshorten(dynamic, { fetchHop: fake({}) }))).toBe("FORBIDDEN_HOST");
+  });
+
+  it("não decodifica parâmetros de sites comuns", async () => {
+    const r = await unshorten("https://site.com/busca?url=https://outro.com/", {
+      fetchHop: fake({ "https://site.com/busca?url=https://outro.com/": [200, null] }),
+    });
+    expect(r.finalUrl).toBe("https://site.com/busca?url=https://outro.com/");
+    expect(r.resolvedBy).toBe("redirect");
+  });
+
   it("não confunde domínios parecidos com serviços de anúncio", async () => {
     const r = await unshorten("https://notlinkvertise.com/", { fetchHop: fake({ "https://notlinkvertise.com/": [200, null] }) });
     expect(r.finalUrl).toBe("https://notlinkvertise.com/");

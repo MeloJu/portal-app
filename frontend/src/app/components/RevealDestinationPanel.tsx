@@ -245,7 +245,9 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
               <ol className="reveal-hops" aria-label="Rota percorrida">
                 {result.hops.map((hop, index) => (
                   <li key={`${hop.url}-${index}`}>
-                    <b>{hop.status}</b>
+                    <b title={hop.kind === "decoded" ? "Destino lido do próprio link" : undefined}>
+                      {hop.kind === "decoded" ? "lido" : hop.status}
+                    </b>
                     <span>{hop.url}</span>
                   </li>
                 ))}

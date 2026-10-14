@@ -1,6 +1,7 @@
 /** Cliente do tools-api (bypass de encurtadores e análise de segurança). */
 
-export type Hop = { url: string; status: number };
+/** kind "decoded": o próximo endereço foi lido do próprio link, sem requisição (status 0). */
+export type Hop = { url: string; status: number; kind?: "decoded" };
 export type UnshortenResult = {
   originalUrl: string;
   finalUrl: string;

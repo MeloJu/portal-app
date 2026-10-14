@@ -2,14 +2,16 @@ import dns from "node:dns";
 import { Agent, fetch as undiciFetch } from "undici";
 import { ApiError } from "./errors.ts";
 import { isAdGate } from "./lib/adgates.ts";
+import { decodeEmbeddedDestination } from "./lib/decode.ts";
 import { assertPublicHost, isPrivateIp, parsePublicUrl } from "./lib/ssrf.ts";
 
-export type Hop = { url: string; status: number };
+/** kind "decoded": o próximo salto foi lido do próprio endereço, sem requisição (status 0). */
+export type Hop = { url: string; status: number; kind?: "decoded" };
 export type UnshortenResult = {
   originalUrl: string;
   finalUrl: string;
   hops: Hop[];
-  resolvedBy: "redirect";
+  resolvedBy: "redirect" | "decoded";
 };
 
 /** Faz uma única requisição sem seguir redirecionamento; devolve status e Location. */
@@ -51,13 +53,25 @@ export async function unshorten(raw: unknown, opts: Options = {}): Promise<Unsho
   const seen = new Set<string>();
   const signal = AbortSignal.timeout(timeoutMs);
   let current = start;
+  let decoded = false;
+  const resolvedBy = () => (decoded ? "decoded" : "redirect");
 
   for (let i = 0; i <= maxHops; i++) {
     if (seen.has(current.href)) throw new ApiError(422, "REDIRECT_LOOP", "O link redireciona em círculo.");
     seen.add(current.href);
 
-    // Não dá para revelar o destino só seguindo redirecionamentos: avisa e devolve a página do anúncio.
     if (isAdGate(current.hostname)) {
+      // Alguns links com anúncio já trazem o destino no endereço: lê sem acessar o serviço.
+      const embedded = decodeEmbeddedDestination(current);
+      if (embedded) {
+        assertPublicHost(embedded);
+        hops.push({ url: current.href, status: 0, kind: "decoded" });
+        decoded = true;
+        current = embedded;
+        continue;
+      }
+
+      // Não dá para revelar o destino só seguindo redirecionamentos: avisa e devolve a página do anúncio.
       throw new ApiError(
         422,
         "AD_GATED",
@@ -76,7 +90,7 @@ export async function unshorten(raw: unknown, opts: Options = {}): Promise<Unsho
     hops.push({ url: current.href, status: res.status });
 
     if (!(res.status >= 300 && res.status < 400 && res.location)) {
-      return { originalUrl: start.href, finalUrl: current.href, hops, resolvedBy: "redirect" };
+      return { originalUrl: start.href, finalUrl: current.href, hops, resolvedBy: resolvedBy() };
     }
 
     let next: URL;

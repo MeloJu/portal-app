@@ -48,6 +48,23 @@ describe("RevealDestinationPanel", () => {
     expect(screen.getByRole("link", { name: /abrir destino/i })).toHaveAttribute("href", resolved.finalUrl);
   });
 
+  it("marca o salto lido do próprio link em vez de mostrar status 0", async () => {
+    unshorten.mockResolvedValue({
+      ...resolved,
+      resolvedBy: "decoded",
+      hops: [
+        { url: "https://link-to.net/1/2/dynamic?r=x", status: 0, kind: "decoded" },
+        { url: resolved.finalUrl, status: 200 },
+      ],
+    });
+    render(<RevealDestinationPanel />);
+    await reveal();
+
+    const route = await screen.findByRole("list", { name: /rota percorrida/i });
+    expect(route).toHaveTextContent("lido");
+    expect(route).not.toHaveTextContent(/^0/);
+  });
+
   it("não chama a API com o campo vazio", async () => {
     render(<RevealDestinationPanel />);
     await userEvent.click(screen.getByRole("button", { name: /revelar destino/i }));

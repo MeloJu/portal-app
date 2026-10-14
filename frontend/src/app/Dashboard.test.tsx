@@ -55,17 +55,12 @@ describe("Dashboard", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("prepara o link do Bypass City na página Fechar portal", async () => {
+  it("abre a página Revelar destino sem depender do Bypass City", async () => {
     renderDashboard();
-    await userEvent.click(within(nav()).getByRole("button", { name: "Fechar portal" }));
-    await userEvent.type(screen.getByPlaceholderText(/cole o link que deseja revelar/i), "bit.ly/abc");
-    await userEvent.click(screen.getByRole("button", { name: /revelar destino/i }));
-    const link = await screen.findByRole("link", { name: /continuar no bypass city/i }, { timeout: 3000 });
-    expect(link).toHaveAttribute(
-      "href",
-      `https://bypass.city/bypass?bypass=${encodeURIComponent("https://bit.ly/abc")}`,
-    );
-    expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+    await userEvent.click(within(nav()).getByRole("button", { name: "Revelar destino" }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/revele o destino original/i);
+    expect(screen.getByLabelText(/link para revelar/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /bypass city/i })).not.toBeInTheDocument();
   });
 
   it("alterna o tema e persiste a escolha", async () => {

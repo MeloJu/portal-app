@@ -1,0 +1,370 @@
+openapi: 3.0.3
+info:
+  title: Lumi Links API
+  version: 0.3.0
+  description: |
+    Contrato entre front e back. Mudou aqui? Abre PR e avisa o outro lado.
+
+    Sessao por cookie: o login devolve `Set-Cookie: lumi_session=<jwt>` com `HttpOnly`,
+    `Secure` e `SameSite=Strict`, valido por 8 horas e sem refresh token (Q47/Q48 em
+    backend/docs/SECURITY.md). O front nao le nem monta o token: envia as requisicoes
+    com credenciais e usa `POST /api/auth/logout` para encerrar.
+security:
+  - cookieAuth: []
+tags:
+  - name: auth
+  - name: links
+  - name: travel
+  - name: dashboard
+  - name: protection
+paths:
+  # ---------- AUTH ----------
+  /api/auth/register:
+    post:
+      tags: [auth]
+      security: []
+      summary: Cria um Usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: Criado e autenticado
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+          content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { description: E-mail já cadastrado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/auth/login:
+    post:
+      tags: [auth]
+      security: []
+      summary: Autentica e abre a sessão no cookie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+          content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } }
+        '401': { description: Credenciais inválidas (mensagem genérica, não revela se o e-mail existe) }
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      summary: Encerra a sessão
+      description: |
+        Necessário porque o cookie é `HttpOnly`: o front não consegue apagá-lo sozinho.
+        Responde com `Set-Cookie` de expiração imediata e é idempotente.
+      responses:
+        '204':
+          description: Sessão encerrada
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/ExpiredSessionCookie' }
+  /api/me:
+    get:
+      tags: [auth]
+      summary: Dados do Usuário logado
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '401': { description: Sem cookie de sessão ou sessão inválida }
+
+  # ---------- LINKS (do Usuário logado) ----------
+  /api/links:
+    post:
+      tags: [links]
+      summary: Cria um Link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateLinkRequest' }
+      responses:
+        '201': { description: Criado, content: { application/json: { schema: { $ref: '#/components/schemas/Link' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { description: Alias já em uso, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    get:
+      tags: [links]
+      summary: Lista os Links do Usuário (Meus portais)
+      parameters:
+        - { name: state, in: query, schema: { $ref: '#/components/schemas/LinkState' } }
+        - { name: page, in: query, schema: { type: integer, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/LinkPage' } } } }
+  /api/links/{code}:
+    parameters: [ { $ref: '#/components/parameters/Code' } ]
+    get:
+      tags: [links]
+      summary: Detalhe de um Link do Usuário
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Link' } } } }
+        '404': { description: Não existe ou não é do Usuário }
+    patch:
+      tags: [links]
+      summary: Edita destino, pausa/retoma ou muda a Validade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateLinkRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Link' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { description: Não existe ou não é do Usuário }
+    delete:
+      tags: [links]
+      summary: Fecha o Link (soft delete)
+      description: |
+        O Link passa para o estado `CLOSED` e deixa de viajar (410 na Travessia), mas a
+        linha e o histórico de Viagens continuam existindo: apagar de verdade faria os
+        números da Visão geral caírem retroativamente. Operação idempotente.
+      responses:
+        '204': { description: Fechado }
+        '404': { description: Não existe ou não é do Usuário }
+  /api/links/{code}/stats:
+    parameters: [ { $ref: '#/components/parameters/Code' } ]
+    get:
+      tags: [links]
+      summary: Estatísticas de Viagens de um Link
+      parameters:
+        - { name: days, in: query, schema: { type: integer, default: 12 } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/LinkStats' } } } }
+        '404': { description: Não existe ou não é do Usuário }
+
+  # ---------- TRAVEL (público) ----------
+  /api/travel/{code}:
+    parameters: [ { $ref: '#/components/parameters/Code' } ]
+    get:
+      tags: [travel]
+      security: []
+      summary: Registra a Viagem e devolve o destino (usado pela Travessia)
+      responses:
+        '200': { description: Viagem permitida, content: { application/json: { schema: { $ref: '#/components/schemas/TravelResponse' } } } }
+        '404': { description: Código curto inexistente }
+        '410': { description: Link Fechado (Ameaça bloqueada), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '423': { description: Link Pausado (Ameaça bloqueada), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /r/{code}:
+    parameters: [ { $ref: '#/components/parameters/Code' } ]
+    get:
+      tags: [travel]
+      security: []
+      summary: Viagem direta sem Travessia (robôs e teste de carga)
+      responses:
+        '302':
+          description: Redirecionamento (Cache-Control no-store)
+          headers: { Location: { schema: { type: string } } }
+        '404': { description: Código curto inexistente }
+        '410': { description: Link Fechado }
+        '423': { description: Link Pausado }
+
+  # ---------- DASHBOARD (Visão geral + Viagens) ----------
+  /api/dashboard/summary:
+    get:
+      tags: [dashboard]
+      summary: Cards da Visão geral
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/DashboardSummary' } } } }
+  /api/dashboard/travels:
+    get:
+      tags: [dashboard]
+      summary: Série de Viagens por dia (Fluxo de viagens), consultada por polling
+      parameters:
+        - { name: days, in: query, schema: { type: integer, default: 12 } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/TimePoint' } } } } }
+  /api/dashboard/top-links:
+    get:
+      tags: [dashboard]
+      summary: Ranking dos Links do Usuário com mais Viagens
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 5 } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/TopLink' } } } } }
+  /api/dashboard/countries:
+    get:
+      tags: [dashboard]
+      summary: Viagens por país (GeoIP, só código do país)
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/CountryCount' } } } } }
+
+  # ---------- PROTECTION ----------
+  /api/protection/summary:
+    get:
+      tags: [protection]
+      summary: Ameaças bloqueadas e Destinos verificados do Usuário
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ProtectionSummary' } } } }
+  /api/protection/events:
+    get:
+      tags: [protection]
+      summary: Histórico recente de Ameaças bloqueadas
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/BlockedEvent' } } } } }
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: lumi_session
+      description: JWT HMAC de 8 h, HttpOnly, Secure, SameSite=Strict. Emitido por register/login.
+  headers:
+    SessionCookie:
+      description: Cookie da sessão.
+      schema:
+        type: string
+        example: lumi_session=<jwt>; Path=/; Max-Age=28800; HttpOnly; Secure; SameSite=Strict
+    ExpiredSessionCookie:
+      description: Cookie da sessão com expiração imediata.
+      schema:
+        type: string
+        example: lumi_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict
+  parameters:
+    Code:
+      name: code
+      in: path
+      required: true
+      schema: { type: string, example: aB3x9Q }
+  responses:
+    BadRequest:
+      description: Dados inválidos (inclui URL inválida, loop e Alias reservado)
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string, maxLength: 120, example: Ana }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    AuthResponse:
+      type: object
+      description: O token não vem no corpo; viaja no cookie de sessão.
+      properties:
+        expiresIn: { type: integer, description: segundos, example: 28800 }
+        user: { $ref: '#/components/schemas/User' }
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+    LinkState:
+      type: string
+      description: |
+        Derivado, não armazenado: `CLOSED` cobre fechado manualmente, Validade vencida e
+        `maxTravels` atingido, e tem precedência sobre `PAUSED`.
+      enum: [ACTIVE, PAUSED, CLOSED]
+    CreateLinkRequest:
+      type: object
+      required: [targetUrl]
+      properties:
+        targetUrl: { type: string, maxLength: 2048, example: facebook.com, description: sem esquema vira https:// }
+        alias: { type: string, nullable: true, pattern: '^[a-zA-Z0-9-]{3,32}$' }
+        title: { type: string, nullable: true, maxLength: 120, example: Campanha Nebulosa }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        maxTravels: { type: integer, nullable: true, minimum: 1 }
+    UpdateLinkRequest:
+      type: object
+      properties:
+        targetUrl: { type: string, maxLength: 2048 }
+        title: { type: string, maxLength: 120 }
+        paused: { type: boolean }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        maxTravels: { type: integer, nullable: true, minimum: 1 }
+    Link:
+      type: object
+      properties:
+        code: { type: string, example: aB3x9Q }
+        shortUrl: { type: string, example: https://l2.to/aB3x9Q }
+        targetUrl: { type: string }
+        title: { type: string, nullable: true }
+        state: { $ref: '#/components/schemas/LinkState' }
+        travelCount: { type: integer }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        maxTravels: { type: integer, nullable: true }
+        createdAt: { type: string, format: date-time }
+    LinkPage:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Link' } }
+        page: { type: integer }
+        totalItems: { type: integer }
+    TravelResponse:
+      type: object
+      properties:
+        targetUrl: { type: string }
+        title: { type: string, nullable: true }
+        travelCount: { type: integer, description: inclui esta Viagem }
+    LinkStats:
+      type: object
+      properties:
+        code: { type: string }
+        totalTravels: { type: integer }
+        humanTravels: { type: integer }
+        botTravels: { type: integer }
+        travelsByDay: { type: array, items: { $ref: '#/components/schemas/TimePoint' } }
+        countries: { type: array, items: { $ref: '#/components/schemas/CountryCount' } }
+    DashboardSummary:
+      type: object
+      properties:
+        activeLinks: { type: integer }
+        totalTravels: { type: integer }
+        travelsChangePct: { type: number, description: vs. período anterior }
+        blockedThreats: { type: integer }
+    TimePoint:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        travels: { type: integer }
+    TopLink:
+      type: object
+      properties:
+        code: { type: string }
+        title: { type: string, nullable: true }
+        travels: { type: integer }
+    CountryCount:
+      type: object
+      properties:
+        country: { type: string, example: BR }
+        travels: { type: integer }
+    ProtectionSummary:
+      type: object
+      properties:
+        blockedThreats: { type: integer }
+        verifiedDestinations:
+          type: integer
+          description: |
+            Links do Usuário cujo destino passou pelo UrlValidator na criação ou no PATCH.
+            Não conta análises do VirusTotal: elas rodam no tools-api, que é sem estado e
+            sem identidade de Usuário.
+        byReason:
+          type: object
+          additionalProperties: { type: integer }
+          example: { INVALID_URL: 4, SELF_LOOP: 1, RESERVED_ALIAS: 2, PAUSED: 9, CLOSED: 3 }
+    BlockedEvent:
+      type: object
+      properties:
+        reason: { type: string, enum: [INVALID_URL, SELF_LOOP, RESERVED_ALIAS, PAUSED, CLOSED, RATE_LIMIT] }
+        code: { type: string, nullable: true }
+        occurredAt: { type: string, format: date-time }
+    Error:
+      type: object
+      properties:
+        code: { type: string, example: ALIAS_TAKEN }
+        message: { type: string, example: Esse nome de portal já foi pego }

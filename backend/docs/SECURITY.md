@@ -59,10 +59,24 @@ JWT guardado em **cookie**, expiração de **8 horas**, **sem refresh token**. A
 custo de implementação: 8h cobre o uso esperado e refresh token é complexidade que não cabe
 no escopo.
 
-> **Em aberto:** as flags do cookie (`HttpOnly`, `Secure`, `SameSite`) e a política de CSRF
-> ainda não foram decididas. Cookie sem `HttpOnly` perde a principal vantagem sobre
-> `localStorage`, e autenticação por cookie reabre CSRF — que `SameSite=Strict` resolve no
-> nosso caso, já que tudo é mesma origem. Precisa virar decisão antes do merge do auth.
+**Decidido (Q47/Q48):** cookie `lumi_session` com `HttpOnly`, `Secure` e
+`SameSite=Strict`, `Max-Age` de 28800 s (8 h), sem refresh token, mais
+`POST /api/auth/logout`.
+
+O porquê de cada flag:
+
+- `HttpOnly` — sem ele, o cookie perde a principal vantagem sobre o `localStorage`: um XSS
+  no front leria o token.
+- `SameSite=Strict` — autenticação por cookie reabre CSRF, e `Strict` resolve no nosso caso
+  porque front e API são mesma origem via Ingress. **É por isso que o CSRF do Spring fica
+  desabilitado** — é a decisão, não esquecimento.
+- `Secure` — em desenvolvimento o Vite faz proxy para `localhost`, onde o navegador aceita
+  cookie `Secure` mesmo em `http`.
+- `POST /api/auth/logout` — o front não consegue apagar um cookie `HttpOnly`, então encerrar
+  a sessão precisa de rota própria, que responde `Max-Age=0`.
+
+O contrato (`docs/openapi.yaml`) acompanha: `cookieAuth` em vez de `bearerAuth`, e o
+`AuthResponse` não devolve mais `accessToken` no corpo.
 
 ## 5. Segredos fora do Git
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decodeEmbeddedDestination } from "./decode.ts";
+import { decodeEmbeddedDestination, decodeKnownShortener } from "./decode.ts";
 
 const b64 = (text: string) => Buffer.from(text).toString("base64");
 const decode = (url: string) => decodeEmbeddedDestination(new URL(url))?.href ?? null;
@@ -42,5 +42,36 @@ describe("decodeEmbeddedDestination", () => {
 
   it("devolve null quando não há destino embutido", () => {
     expect(decode("https://linkvertise.com/514008/hydrogen-gateway-1")).toBeNull();
+  });
+});
+
+describe("decodeKnownShortener", () => {
+  const b64 = (text: string, times = 1) => {
+    let out = text;
+    for (let i = 0; i < times; i++) out = Buffer.from(out).toString("base64");
+    return out;
+  };
+  const decode = (href: string) => decodeKnownShortener(new URL(href))?.href ?? null;
+
+  it("decodifica base64 de um parâmetro", () => {
+    expect(decode(`https://sfl.gl/abc?u=${b64("https://exemplo.com/a")}`)).toBe("https://exemplo.com/a");
+    expect(decode(`https://www.ecryptly.com/go?id=${b64("https://exemplo.com/")}`)).toBe("https://exemplo.com/");
+  });
+
+  it("respeita o caminho exigido pela regra", () => {
+    const payload = b64("https://exemplo.com/");
+    expect(decode(`https://sharetext.me/redirect?url=${payload}`)).toBe("https://exemplo.com/");
+    expect(decode(`https://sharetext.me/outra?url=${payload}`)).toBeNull();
+  });
+
+  it("decodifica várias camadas de base64 no fragmento", () => {
+    expect(decode(`https://mh.gourlpro.com/#${b64("https://exemplo.com/x", 3)}`)).toBe("https://exemplo.com/x");
+    expect(decode(`https://mh.gourlpro.com/#${b64("https://exemplo.com/x", 1)}`)).toBeNull();
+  });
+
+  it("ignora hosts fora da lista e lixo no lugar do base64", () => {
+    expect(decode(`https://site.com/?u=${b64("https://exemplo.com/")}`)).toBeNull();
+    expect(decode("https://sfl.gl/abc?u=nao-e-base64")).toBeNull();
+    expect(decode(`https://sfl.gl/abc?u=${b64("javascript:alert(1)")}`)).toBeNull();
   });
 });

@@ -38,3 +38,5 @@ backend/target/
 # SO
 .DS_Store
 Thumbs.db
+# Export original do Figma Make
+*.zip

@@ -1,23 +1,30 @@
-# Lumi Links — portal-app
+# Lumi Links — Frontend (portal-app)
 
-Monorepo do projeto: frontend React e backend Spring Boot no mesmo repositório.
+React 19 + Vite + Tailwind v4 + React Router 7. Testes com Vitest + Testing Library.
 
-| Pasta | Stack | Docs |
-| --- | --- | --- |
-| [`frontend/`](frontend/README.md) | React 19 + Vite + Tailwind v4 + React Router 7, testes com Vitest | `frontend/README.md` |
-| [`backend/`](backend/) | Spring Boot 4 + Java 21, PostgreSQL via JPA/Flyway, OAuth2 resource server | `backend/docs/` |
+## Scripts
 
-## Como rodar
+| Comando | O que faz |
+| --- | --- |
+| `npm run dev` | servidor de desenvolvimento (http://localhost:5173) |
+| `npm run build` | typecheck + build de produção |
+| `npm test` | roda os testes uma vez |
+| `npm run test:watch` | testes em modo watch |
 
-```bash
-# frontend (http://localhost:5173)
-cd frontend && npm install && npm run dev
+## Estrutura
 
-# backend (http://localhost:8080)
-cd backend && ./mvnw spring-boot:run
-```
+- `src/app/` — App, rotas, Dashboard e páginas (`pages/`)
+- `src/assets/` — imagens usadas pelo app
+- `assets/` — imagens de referência (mascote e logos), fora do bundle
+- `src/test/setup.ts` — setup global dos testes
 
 ## Gitflow
 
 `main` (produção) ← `develop` (integração) ← `feature/*`. Hotfixes saem de `main`, releases de `develop`.
 Os PNGs são versionados com Git LFS (`git lfs install` antes do primeiro clone/commit).
+
+## Pendências (próximas etapas)
+
+- Integrar a API do VirusTotal (análise de URLs).
+- Substituir o link externo do Bypass City por um bypass de encurtadores próprio (rota "Fechar portal").
+- Trocar os dados mockados (portais, métricas, login) pela API do backend.

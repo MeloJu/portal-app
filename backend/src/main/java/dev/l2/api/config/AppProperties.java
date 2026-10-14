@@ -21,9 +21,15 @@ public record AppProperties(
 		@Pattern(regexp = "^https?://.+", message = "deve comecar com http:// ou https://")
 		String publicBaseUrl,
 
-		@NotNull @Valid Jwt jwt) {
+		@NotNull @Valid Jwt jwt,
+
+		@DefaultValue @Valid Session session) {
 
 	private static final int MINIMUM_SECRET_BYTES = 32;
+
+	public record Session(@DefaultValue("true") boolean secureCookie) {
+
+	}
 
 	public record Jwt(@NotBlank String secret, @DefaultValue("8h") Duration ttl) {
 

@@ -14,13 +14,16 @@ public class SessionCookie {
 
 	private final Duration ttl;
 
+	private final boolean secure;
+
 	@Autowired
 	public SessionCookie(AppProperties properties) {
-		this(properties.jwt().ttl());
+		this(properties.jwt().ttl(), properties.session().secureCookie());
 	}
 
-	SessionCookie(Duration ttl) {
+	SessionCookie(Duration ttl, boolean secure) {
 		this.ttl = ttl;
+		this.secure = secure;
 	}
 
 	public ResponseCookie issue(String token) {
@@ -32,7 +35,7 @@ public class SessionCookie {
 	}
 
 	private ResponseCookie.ResponseCookieBuilder base(String value) {
-		return ResponseCookie.from(NAME, value).path("/").httpOnly(true).secure(true).sameSite("Strict");
+		return ResponseCookie.from(NAME, value).path("/").httpOnly(true).secure(this.secure).sameSite("Strict");
 	}
 
 }

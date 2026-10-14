@@ -57,10 +57,13 @@ paths:
   /api/auth/logout:
     post:
       tags: [auth]
+      security: []
       summary: Encerra a sessão
       description: |
         Necessário porque o cookie é `HttpOnly`: o front não consegue apagá-lo sozinho.
-        Responde com `Set-Cookie` de expiração imediata e é idempotente.
+        Responde com `Set-Cookie` de expiração imediata e é idempotente — não exige sessão
+        válida, senão sair depois das 8 h de validade devolveria 401 em vez de limpar o
+        cookie.
       responses:
         '204':
           description: Sessão encerrada

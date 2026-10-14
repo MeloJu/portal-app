@@ -19,3 +19,22 @@ logs/
 # beside it.
 /.plugins/
 /.opencode-skills/
+
+# Java / Maven
+backend/target/
+*.class
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Secrets
+.env
+*.env
+!.env.example
+
+# SO
+.DS_Store
+Thumbs.db

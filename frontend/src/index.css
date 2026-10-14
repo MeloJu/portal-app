@@ -2045,6 +2045,118 @@ button {
   line-height: 1.45;
 }
 
+.gate-card {
+  display: grid;
+  gap: 14px;
+  margin-top: 15px;
+  padding: 18px;
+  border: 1px solid #dcd5f1;
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 28px rgba(39, 25, 83, 0.06);
+  animation: result-arrive 350ms ease-out both;
+}
+
+.gate-head h3 {
+  margin: 8px 0 4px;
+  color: #312d49;
+  font: 600 13px "Space Grotesk", sans-serif;
+}
+
+.gate-head p,
+.gate-consent p,
+.gate-credit {
+  margin: 0;
+  color: #8e8b9d;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.gate-credit a {
+  color: #6e56ce;
+}
+
+.gate-consent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed #cfc6ee;
+  border-radius: 12px;
+}
+
+.gate-consent button,
+.gate-paste button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 15px;
+  color: white;
+  background: linear-gradient(135deg, #7454ec, #4a2ac5);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.gate-paste button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.gate-frame {
+  width: 100%;
+  height: 420px;
+  border: 1px solid #dcd5f1;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.gate-paste {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.gate-paste input {
+  min-width: 0;
+  padding: 11px 13px;
+  border: 1px solid #dcd5f1;
+  border-radius: 10px;
+  outline: 0;
+  color: #312d49;
+  background: #faf9ff;
+  font-size: 10px;
+}
+
+html[data-theme="dark"] .gate-card {
+  border-color: rgba(133, 100, 246, 0.3);
+  background: rgba(14, 12, 38, 0.86);
+}
+
+html[data-theme="dark"] .gate-head h3 {
+  color: #f0edff;
+}
+
+html[data-theme="dark"] .gate-consent,
+html[data-theme="dark"] .gate-frame {
+  border-color: rgba(133, 100, 246, 0.35);
+}
+
+html[data-theme="dark"] .gate-paste input {
+  color: white;
+  border-color: rgba(133, 100, 246, 0.35);
+  background: rgba(7, 6, 29, 0.7);
+}
+
+@media (max-width: 760px) {
+  .gate-paste {
+    grid-template-columns: 1fr;
+  }
+}
+
 .reveal-result {
   align-items: start;
 }

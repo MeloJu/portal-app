@@ -19,12 +19,19 @@ export type ScanResult = {
 export class ToolsError extends Error {
   status: number;
   code: string;
+  /** Em AD_GATED: endereço da página de anúncio, onde o usuário precisa resolver a verificação. */
+  gateUrl?: string;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, gateUrl?: string) {
     super(message);
     this.name = "ToolsError";
     this.status = status;
     this.code = code;
+    this.gateUrl = gateUrl;
+  }
+
+  get isAdGated() {
+    return this.code === "AD_GATED" && Boolean(this.gateUrl);
   }
 
   /** A análise foi enviada, mas ainda não terminou: vale tentar de novo em instantes. */
@@ -56,8 +63,13 @@ async function post<T>(path: string, url: string, signal?: AbortSignal): Promise
 
   // 202 também carrega { code, message } (análise em andamento).
   if (!res.ok || res.status === 202) {
-    const err = (body ?? {}) as { code?: string; message?: string };
-    throw new ToolsError(res.status, err.code ?? "UNKNOWN", err.message ?? "Algo deu errado. Tente novamente.");
+    const err = (body ?? {}) as { code?: string; message?: string; gateUrl?: string };
+    throw new ToolsError(
+      res.status,
+      err.code ?? "UNKNOWN",
+      err.message ?? "Algo deu errado. Tente novamente.",
+      typeof err.gateUrl === "string" ? err.gateUrl : undefined,
+    );
   }
   return body as T;
 }

@@ -47,7 +47,9 @@ export function createApp(handlers: Partial<Handlers> = {}, limit = { max: 20, w
   });
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-    if (err instanceof ApiError) return res.status(err.status).json({ code: err.code, message: err.message });
+    if (err instanceof ApiError) {
+      return res.status(err.status).json({ code: err.code, message: err.message, ...err.details });
+    }
     if (err instanceof SyntaxError) return res.status(400).json({ code: "INVALID_URL", message: "Corpo inválido." });
     console.error(err);
     res.status(500).json({ code: "INTERNAL_ERROR", message: "Algo deu errado." });

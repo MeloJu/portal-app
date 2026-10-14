@@ -1,6 +1,7 @@
 import dns from "node:dns";
 import { Agent, fetch as undiciFetch } from "undici";
 import { ApiError } from "./errors.ts";
+import { isAdGate } from "./lib/adgates.ts";
 import { assertPublicHost, isPrivateIp, parsePublicUrl } from "./lib/ssrf.ts";
 
 export type Hop = { url: string; status: number };
@@ -54,6 +55,16 @@ export async function unshorten(raw: unknown, opts: Options = {}): Promise<Unsho
   for (let i = 0; i <= maxHops; i++) {
     if (seen.has(current.href)) throw new ApiError(422, "REDIRECT_LOOP", "O link redireciona em círculo.");
     seen.add(current.href);
+
+    // Não dá para revelar o destino só seguindo redirecionamentos: avisa e devolve a página do anúncio.
+    if (isAdGate(current.hostname)) {
+      throw new ApiError(
+        422,
+        "AD_GATED",
+        "Este link passa por uma página de anúncio. Resolva a verificação para revelar o destino.",
+        { gateUrl: current.href },
+      );
+    }
 
     let res: { status: number; location: string | null };
     try {

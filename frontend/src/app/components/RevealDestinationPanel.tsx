@@ -8,7 +8,7 @@ type Props = {
   maxScanRetries?: number;
 };
 
-type Status = "idle" | "loading" | "done" | "error";
+type Status = "idle" | "loading" | "done" | "error" | "gated";
 type ScanState = { status: "idle" | "loading" | "pending" | "done" | "error"; result?: ScanResult; message?: string };
 
 const verdictCopy: Record<Verdict, { label: string; text: string }> = {
@@ -24,6 +24,8 @@ function hostOf(url: string) {
     return url;
   }
 }
+
+const BYPASS_CITY = "https://bypass.city/bypass?bypass=";
 
 /** Só abre destinos http/https (evita esquemas como javascript:). */
 function isSafeToOpen(url: string) {
@@ -44,6 +46,9 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [scanState, setScanState] = useState<ScanState>({ status: "idle" });
+  const [gateUrl, setGateUrl] = useState("");
+  const [frameOpen, setFrameOpen] = useState(false);
+  const [pasted, setPasted] = useState("");
   const runId = useRef(0);
   const controller = useRef<AbortController | null>(null);
 
@@ -56,25 +61,42 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
     setError("");
     setCopied(false);
     setScanState({ status: "idle" });
+    setGateUrl("");
+    setFrameOpen(false);
   }
 
-  async function reveal(event: FormEvent) {
-    event.preventDefault();
-    if (!input.trim() || status === "loading") return;
+  async function run(value: string) {
+    if (!value.trim() || status === "loading") return;
     reset();
     const id = runId.current;
     controller.current = new AbortController();
     setStatus("loading");
     try {
-      const data = await unshorten(input.trim(), controller.current.signal);
+      const data = await unshorten(value.trim(), controller.current.signal);
       if (id !== runId.current) return;
       setResult(data);
+      setPasted("");
       setStatus("done");
     } catch (err) {
       if (id !== runId.current) return;
+      if (err instanceof ToolsError && err.isAdGated && isSafeToOpen(err.gateUrl!)) {
+        setGateUrl(err.gateUrl!);
+        setStatus("gated");
+        return;
+      }
       setError(err instanceof ToolsError ? err.message : "Algo deu errado. Tente novamente.");
       setStatus("error");
     }
+  }
+
+  function reveal(event: FormEvent) {
+    event.preventDefault();
+    void run(input);
+  }
+
+  function usePasted(event: FormEvent) {
+    event.preventDefault();
+    void run(pasted);
   }
 
   async function analyze() {
@@ -161,6 +183,52 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
           </div>
         )}
       </article>
+
+      {status === "gated" && (
+        <article className="gate-card" aria-label="Link com página de anúncio">
+          <div className="gate-head">
+            <span className="close-badge">{icons.shield} LINK COM ANÚNCIO</span>
+            <h3>Este link passa por uma página de anúncio</h3>
+            <p>
+              Só seguir o redirecionamento não revela o destino. Resolva a verificação abaixo, copie o endereço
+              final e cole no campo para a Lumi mostrar e analisar.
+            </p>
+          </div>
+
+          {!frameOpen ? (
+            <div className="gate-consent">
+              <p>Ao continuar, este link será aberto pelo seu navegador no serviço externo <b>bypass.city</b>.</p>
+              <button onClick={() => setFrameOpen(true)} type="button">Resolver aqui na Lumi {icons.arrow}</button>
+            </div>
+          ) : (
+            <iframe
+              className="gate-frame"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              sandbox="allow-scripts allow-same-origin allow-forms"
+              src={`${BYPASS_CITY}${encodeURIComponent(gateUrl)}`}
+              title="Verificação do bypass.city"
+            />
+          )}
+
+          <form className="gate-paste" onSubmit={usePasted}>
+            <input
+              aria-label="Cole o destino revelado"
+              onChange={(event) => setPasted(event.target.value)}
+              placeholder="Cole aqui o endereço revelado..."
+              type="text"
+              value={pasted}
+            />
+            <button disabled={!pasted.trim()} type="submit">Usar este destino</button>
+          </form>
+
+          <p className="gate-credit">
+            Processado por <a href="https://bypass.city/" rel="noopener noreferrer" target="_blank">bypass.city</a>.
+            Se o quadro não carregar,{" "}
+            <a href={`${BYPASS_CITY}${encodeURIComponent(gateUrl)}`} rel="noopener noreferrer" target="_blank">abra em outra aba</a>.
+          </p>
+        </article>
+      )}
 
       {status === "error" && (
         <p className="reveal-error" role="alert">{error}</p>

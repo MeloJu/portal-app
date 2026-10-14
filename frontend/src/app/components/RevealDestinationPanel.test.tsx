@@ -105,6 +105,70 @@ describe("RevealDestinationPanel", () => {
     expect(scan).toHaveBeenCalledTimes(3);
   });
 
+  describe("link com anúncio (AD_GATED)", () => {
+    const gate = "https://linkvertise.com/514008/abc";
+    const gated = () => new tools.ToolsError(422, "AD_GATED", "anúncio", gate);
+
+    it("só carrega o bypass.city depois do clique do usuário", async () => {
+      unshorten.mockRejectedValue(gated());
+      render(<RevealDestinationPanel />);
+      await reveal(gate);
+
+      expect(await screen.findByText(/passa por uma página de anúncio/i)).toBeInTheDocument();
+      expect(screen.queryByTitle(/verificação do bypass\.city/i)).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: /resolver aqui na lumi/i }));
+      const frame = screen.getByTitle(/verificação do bypass\.city/i);
+      expect(frame).toHaveAttribute("src", `https://bypass.city/bypass?bypass=${encodeURIComponent(gate)}`);
+      expect(frame).toHaveAttribute("referrerpolicy", "no-referrer");
+    });
+
+    it("isola o quadro: sem navegar a página nem abrir popups", async () => {
+      unshorten.mockRejectedValue(gated());
+      render(<RevealDestinationPanel />);
+      await reveal(gate);
+      await userEvent.click(await screen.findByRole("button", { name: /resolver aqui na lumi/i }));
+
+      const sandbox = screen.getByTitle(/verificação do bypass\.city/i).getAttribute("sandbox") ?? "";
+      expect(sandbox).not.toContain("allow-top-navigation");
+      expect(sandbox).not.toContain("allow-popups");
+    });
+
+    it("mostra o crédito e um link para abrir em outra aba", async () => {
+      unshorten.mockRejectedValue(gated());
+      render(<RevealDestinationPanel />);
+      await reveal(gate);
+
+      const credit = await screen.findByRole("link", { name: "bypass.city" });
+      expect(credit).toHaveAttribute("rel", expect.stringContaining("noopener"));
+      expect(screen.getByRole("link", { name: /abra em outra aba/i })).toHaveAttribute("target", "_blank");
+    });
+
+    it("revela e permite analisar o destino colado pelo usuário", async () => {
+      unshorten.mockRejectedValueOnce(gated()).mockResolvedValueOnce(resolved);
+      render(<RevealDestinationPanel />);
+      await reveal(gate);
+
+      const paste = await screen.findByLabelText(/cole o destino revelado/i);
+      expect(screen.getByRole("button", { name: /usar este destino/i })).toBeDisabled();
+      await userEvent.type(paste, "https://www.example.com/pagina?x=1");
+      await userEvent.click(screen.getByRole("button", { name: /usar este destino/i }));
+
+      expect(await screen.findByText("DESTINO REVELADO")).toBeInTheDocument();
+      expect(unshorten).toHaveBeenLastCalledWith("https://www.example.com/pagina?x=1", expect.any(AbortSignal));
+      expect(screen.queryByText(/passa por uma página de anúncio/i)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /analisar com a lumi/i })).toBeInTheDocument();
+    });
+
+    it("não abre quadro para endereço que não seja http/https", async () => {
+      unshorten.mockRejectedValue(new tools.ToolsError(422, "AD_GATED", "anúncio", "javascript:alert(1)"));
+      render(<RevealDestinationPanel />);
+      await reveal(gate);
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /resolver aqui na lumi/i })).not.toBeInTheDocument();
+    });
+  });
+
   it("mostra erro quando a análise falha", async () => {
     unshorten.mockResolvedValue(resolved);
     scan.mockRejectedValue(new tools.ToolsError(503, "SCAN_NOT_CONFIGURED", "A análise de segurança não está configurada."));

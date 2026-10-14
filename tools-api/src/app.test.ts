@@ -56,4 +56,11 @@ describe("rotas /tools", () => {
     for (let i = 0; i < 3; i++) statuses.push((await request(app).post("/tools/unshorten").send({ url: "a.com" })).status);
     expect(statuses).toEqual([200, 200, 429]);
   });
+
+  it("inclui gateUrl na resposta de erro AD_GATED", async () => {
+    const unshorten = vi.fn().mockRejectedValue(new ApiError(422, "AD_GATED", "anúncio", { gateUrl: "https://work.ink/x" }));
+    const res = await request(createApp({ unshorten })).post("/tools/unshorten").send({ url: "work.ink/x" });
+    expect(res.status).toBe(422);
+    expect(res.body).toEqual({ code: "AD_GATED", message: "anúncio", gateUrl: "https://work.ink/x" });
+  });
 });

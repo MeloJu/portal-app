@@ -75,4 +75,25 @@ describe("unshorten", () => {
       new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(new Error("aborted"))));
     expect(await code(unshorten("https://a.com/", { fetchHop, timeoutMs: 20 }))).toBe("TIMEOUT");
   });
+
+  it("recusa link de serviço com anúncio e devolve a página do anúncio", async () => {
+    let called = false;
+    const fetchHop: HopFetcher = async () => ((called = true), { status: 200, location: null });
+    const err = (await unshorten("https://linkvertise.com/514008/abc", { fetchHop }).catch((e) => e)) as ApiError;
+    expect(err.code).toBe("AD_GATED");
+    expect(err.details).toEqual({ gateUrl: "https://linkvertise.com/514008/abc" });
+    expect(called).toBe(false);
+  });
+
+  it("detecta o anúncio quando um encurtador comum redireciona para ele", async () => {
+    const fetchHop = fake({ "https://bit.ly/x": [301, "https://work.ink/1abc/destino"] });
+    const err = (await unshorten("bit.ly/x", { fetchHop }).catch((e) => e)) as ApiError;
+    expect(err.code).toBe("AD_GATED");
+    expect(err.details).toEqual({ gateUrl: "https://work.ink/1abc/destino" });
+  });
+
+  it("não confunde domínios parecidos com serviços de anúncio", async () => {
+    const r = await unshorten("https://notlinkvertise.com/", { fetchHop: fake({ "https://notlinkvertise.com/": [200, null] }) });
+    expect(r.finalUrl).toBe("https://notlinkvertise.com/");
+  });
 });

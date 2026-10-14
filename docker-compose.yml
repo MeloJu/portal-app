@@ -1,0 +1,25 @@
+# Postgres local para desenvolvimento. As credenciais daqui sao de dev e saem do .env
+# (copie de .env.example); em producao o banco vem do CloudNativePG com Secret do K8s.
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: lumi-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lumi}
+      POSTGRES_USER: ${POSTGRES_USER:-lumi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lumi}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Postgres 18+: o mount vai em /var/lib/postgresql, e os dados numa subpasta
+      # por versao, o que permite pg_upgrade --link sem cruzar mount point.
+      - lumi-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lumi} -d ${POSTGRES_DB:-lumi}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  lumi-db-data:

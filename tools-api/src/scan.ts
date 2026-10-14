@@ -5,7 +5,8 @@ export type Verdict = "clean" | "suspicious" | "malicious";
 type Stats = { malicious: number; suspicious: number; harmless: number; undetected: number };
 export type ScanResult = { url: string; verdict: Verdict; stats: Stats; permalink: string };
 
-type Options = { apiKey?: string; fetchFn?: typeof fetch; pollMs?: number; maxPolls?: number };
+/** pollDelays: esperas (ms) antes de cada consulta ao resultado. Poucas e espaçadas: a chave grátis permite ~4 req/min. */
+type Options = { apiKey?: string; fetchFn?: typeof fetch; pollDelays?: number[] };
 
 const VT = "https://www.virustotal.com/api/v3";
 
@@ -18,7 +19,7 @@ export function toVerdict(stats: { malicious: number; suspicious: number }): Ver
 }
 
 export async function scanUrl(raw: unknown, opts: Options = {}): Promise<ScanResult> {
-  const { apiKey = process.env.VT_API_KEY, fetchFn = fetch, pollMs = 2000, maxPolls = 5 } = opts;
+  const { apiKey = process.env.VT_API_KEY, fetchFn = fetch, pollDelays = [10_000, 15_000] } = opts;
   if (!apiKey) throw new ApiError(503, "SCAN_NOT_CONFIGURED", "A análise de segurança não está configurada.");
   const url = parsePublicUrl(raw).href;
   const id = vtId(url);
@@ -58,12 +59,13 @@ export async function scanUrl(raw: unknown, opts: Options = {}): Promise<ScanRes
   if (!submit.ok) throw new ApiError(502, "UPSTREAM_ERROR", "O VirusTotal recusou o envio.");
   const analysisId = ((await submit.json()) as { data: { id: string } }).data.id;
 
-  for (let i = 0; i < maxPolls; i++) {
-    await new Promise((r) => setTimeout(r, pollMs));
+  for (const delay of pollDelays) {
+    await new Promise((r) => setTimeout(r, delay));
     const res = await call(`/analyses/${analysisId}`);
     if (!res.ok) continue;
     const body = (await res.json()) as { data: { attributes: { status: string; stats: Stats } } };
     if (body.data.attributes.status === "completed") return build(body.data.attributes.stats);
   }
-  throw new ApiError(504, "TIMEOUT", "A análise ainda está em andamento. Tente novamente em instantes.");
+  // A URL já foi enviada: uma nova chamada em instantes encontra o relatório pronto.
+  throw new ApiError(202, "ANALYSIS_PENDING", "A análise ainda está em andamento. Tente novamente em instantes.");
 }

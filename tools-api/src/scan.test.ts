@@ -42,18 +42,18 @@ describe("scanUrl", () => {
       .mockResolvedValueOnce(json(200, { data: { id: "an-1" } }))
       .mockResolvedValueOnce(json(200, { data: { attributes: { status: "queued", stats: stats() } } }))
       .mockResolvedValueOnce(json(200, { data: { attributes: { status: "completed", stats: stats(0, 2) } } }));
-    const r = await scanUrl("https://novo.com/", { apiKey: "k", fetchFn, pollMs: 1 });
+    const r = await scanUrl("https://novo.com/", { apiKey: "k", fetchFn, pollDelays: [1, 1] });
     expect(r.verdict).toBe("suspicious");
     expect(fetchFn.mock.calls[1][1].method).toBe("POST");
   });
 
-  it("devolve TIMEOUT se a análise não conclui a tempo", async () => {
+  it("devolve ANALYSIS_PENDING (202) se a análise não conclui a tempo", async () => {
     const fetchFn = vi
       .fn()
       .mockResolvedValueOnce(json(404, {}))
       .mockResolvedValueOnce(json(200, { data: { id: "an-1" } }))
       .mockImplementation(async () => json(200, { data: { attributes: { status: "queued", stats: stats() } } }));
-    expect(await code(scanUrl("https://novo.com/", { apiKey: "k", fetchFn, pollMs: 1, maxPolls: 2 }))).toBe("TIMEOUT");
+    expect(await code(scanUrl("https://novo.com/", { apiKey: "k", fetchFn, pollDelays: [1, 1] }))).toBe("ANALYSIS_PENDING");
   });
 
   it("repassa o limite de taxa do VirusTotal como RATE_LIMIT", async () => {

@@ -25,21 +25,39 @@ export default function RedirectPage() {
 
       <section className="redirect-card">
         <div className="redirect-portal" aria-hidden="true">
-          <span className="redirect-ring ring-r-one"><i /></span>
-          <span className="redirect-ring ring-r-two"><i /></span>
+          <span className="redirect-ring ring-r-one">
+            <i />
+          </span>
+          <span className="redirect-ring ring-r-two">
+            <i />
+          </span>
           <span className="redirect-ring ring-r-three" />
           <strong>L²</strong>
         </div>
         <div className="redirect-copy">
           <span>DESTINO IDENTIFICADO</span>
           <h1>Este serviço vai levar você para {destinationHost}.</h1>
-          <p>O portal aponta para <b>{destination.name}</b>. Confira o endereço abaixo antes de decidir se deseja continuar.</p>
+          <p>
+            O portal aponta para <b>{destination.name}</b>. Confira o endereço abaixo antes de decidir se deseja
+            continuar.
+          </p>
         </div>
         <div className="redirect-destination">
           <div className="destination-shield">
             <svg aria-hidden="true" fill="none" height="20" viewBox="0 0 24 24" width="20">
-              <path d="M12 22s8-3.7 8-10V5l-8-3-8 3v7c0 6.3 8 10 8 10Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
-              <path d="m8.8 12 2.1 2.1 4.5-4.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+              <path
+                d="M12 22s8-3.7 8-10V5l-8-3-8 3v7c0 6.3 8 10 8 10Z"
+                stroke="currentColor"
+                strokeLinejoin="round"
+                strokeWidth="1.8"
+              />
+              <path
+                d="m8.8 12 2.1 2.1 4.5-4.5"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.8"
+              />
             </svg>
           </div>
           <div>

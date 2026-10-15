@@ -19,7 +19,10 @@ describe("api/tools", () => {
   });
 
   it("converte erro da API em ToolsError com code e mensagem", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(422, { code: "REDIRECT_LOOP", message: "O link redireciona em círculo." })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(reply(422, { code: "REDIRECT_LOOP", message: "O link redireciona em círculo." })),
+    );
     const err = (await unshorten("a.com").catch((e) => e)) as ToolsError;
     expect(err).toBeInstanceOf(ToolsError);
     expect(err.code).toBe("REDIRECT_LOOP");
@@ -28,7 +31,10 @@ describe("api/tools", () => {
   });
 
   it("trata 202 como análise pendente (não como sucesso)", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(202, { code: "ANALYSIS_PENDING", message: "em andamento" })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(reply(202, { code: "ANALYSIS_PENDING", message: "em andamento" })),
+    );
     const err = (await scan("a.com").catch((e) => e)) as ToolsError;
     expect(err.isPending).toBe(true);
   });

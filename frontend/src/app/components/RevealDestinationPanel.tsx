@@ -314,7 +314,10 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
           if (id !== runId.current) return;
         }
       }
-      setScanState({ status: "error", message: "A análise está demorando mais que o normal. Tente novamente em instantes." });
+      setScanState({
+        status: "error",
+        message: "A análise está demorando mais que o normal. Tente novamente em instantes.",
+      });
     } catch (err) {
       if (id !== runId.current) return;
       setScanState({
@@ -361,10 +364,21 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
           <p>Cole um link encurtado. A Lumi segue a rota por você e mostra o endereço original aqui mesmo.</p>
         </div>
         <div className="collapse-visual" aria-hidden="true">
-          <div className="collapse-ring collapse-outer"><i /></div>
-          <div className="collapse-ring collapse-middle"><i /></div>
-          <div className="collapse-ring collapse-inner"><span>{icons.unlink}</span></div>
-          <div className="collapse-rays"><i /><i /><i /><i /></div>
+          <div className="collapse-ring collapse-outer">
+            <i />
+          </div>
+          <div className="collapse-ring collapse-middle">
+            <i />
+          </div>
+          <div className="collapse-ring collapse-inner">
+            <span>{icons.unlink}</span>
+          </div>
+          <div className="collapse-rays">
+            <i />
+            <i />
+            <i />
+            <i />
+          </div>
         </div>
         <form className="close-form" onSubmit={reveal}>
           <label>
@@ -384,7 +398,11 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
         </form>
         {isLoading && (
           <div className="closing-status" role="status" aria-live="polite">
-            <span><i /><i /><i /></span>
+            <span>
+              <i />
+              <i />
+              <i />
+            </span>
             <strong>Seguindo a rota do portal</strong>
             <small>Isso leva só alguns segundos</small>
           </div>
@@ -396,20 +414,29 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
           <div className="gate-head">
             <span className="close-badge">{icons.shield} LINK COM ANÚNCIO</span>
             <h3>Falta só uma verificação</h3>
-            <p>Este link esconde o destino atrás de uma página de anúncio. Resolva a verificação e a Lumi faz o resto.</p>
+            <p>
+              Este link esconde o destino atrás de uma página de anúncio. Resolva a verificação e a Lumi faz o resto.
+            </p>
           </div>
 
           <ol className="gate-steps" aria-label="Etapas">
-            <li className={frameOpen ? "done" : "active"}><span>1</span>Abrir verificação</li>
-            <li className={frameOpen ? "active" : ""}><span>2</span>Resolver e copiar o link</li>
-            <li><span>3</span>Lumi revela e analisa</li>
+            <li className={frameOpen ? "done" : "active"}>
+              <span>1</span>Abrir verificação
+            </li>
+            <li className={frameOpen ? "active" : ""}>
+              <span>2</span>Resolver e copiar o link
+            </li>
+            <li>
+              <span>3</span>Lumi revela e analisa
+            </li>
           </ol>
 
           {!hasLumiExtension() && (
             <>
               <div className="gate-ext">
                 <p>
-                  <b>Quer pular o copiar e colar?</b> Com a extensão da Lumi, o link revelado vem sozinho depois do captcha.
+                  <b>Quer pular o copiar e colar?</b> Com a extensão da Lumi, o link revelado vem sozinho depois do
+                  captcha.
                 </p>
                 {extensionInstallUrl() ? (
                   <a href={extensionInstallUrl()!} rel="noopener noreferrer" target="_blank">
@@ -422,17 +449,25 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
                 )}
               </div>
               {extensionHelp && (
-                <div className="gate-ext-help" aria-label="Instalar a extensão localmente" ref={extHelpRef} role="region">
+                <div
+                  className="gate-ext-help"
+                  aria-label="Instalar a extensão localmente"
+                  ref={extHelpRef}
+                  role="region"
+                >
                   <ol>
                     <li>
                       Abra uma nova aba em <code>{extensionsPage()}</code>{" "}
-                      <button onClick={() => void copyExtensionsPage()} type="button">{icons.copy} {pageCopied ? "Copiado" : "Copiar"}</button>
+                      <button onClick={() => void copyExtensionsPage()} type="button">
+                        {icons.copy} {pageCopied ? "Copiado" : "Copiar"}
+                      </button>
                       <small>O navegador não deixa sites abrirem essa página: cole na barra de endereço.</small>
                     </li>
                     {isFirefox() ? (
                       <>
                         <li>
-                          Clique em <b>Carregar extensão temporária...</b> e escolha o arquivo <code>extension/manifest.json</code>.
+                          Clique em <b>Carregar extensão temporária...</b> e escolha o arquivo{" "}
+                          <code>extension/manifest.json</code>.
                           <small>No Firefox ela fica até fechar o navegador; depois é só carregar de novo.</small>
                         </li>
                         <li>
@@ -442,8 +477,13 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
                       </>
                     ) : (
                       <>
-                        <li>Ligue o <b>Modo do desenvolvedor</b> (canto superior direito).</li>
-                        <li>Clique em <b>Carregar sem compactação</b> e escolha a pasta <code>extension/</code> do projeto.</li>
+                        <li>
+                          Ligue o <b>Modo do desenvolvedor</b> (canto superior direito).
+                        </li>
+                        <li>
+                          Clique em <b>Carregar sem compactação</b> e escolha a pasta <code>extension/</code> do
+                          projeto.
+                        </li>
                       </>
                     )}
                   </ol>
@@ -457,8 +497,12 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
 
           {!frameOpen ? (
             <div className="gate-consent">
-              <p>A verificação é feita pelo serviço parceiro <b>bypass.city</b>, carregado pelo seu navegador.</p>
-              <button onClick={() => setFrameOpen(true)} type="button">Resolver aqui na Lumi {icons.arrow}</button>
+              <p>
+                A verificação é feita pelo serviço parceiro <b>bypass.city</b>, carregado pelo seu navegador.
+              </p>
+              <button onClick={() => setFrameOpen(true)} type="button">
+                Resolver aqui na Lumi {icons.arrow}
+              </button>
             </div>
           ) : (
             <div className="gate-window">
@@ -479,7 +523,11 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
               <div className="gate-window-body">
                 {!frameLoaded && (
                   <div className="gate-loading" role="status">
-                    <span><i /><i /><i /></span>
+                    <span>
+                      <i />
+                      <i />
+                      <i />
+                    </span>
                     <strong>Preparando a verificação</strong>
                   </div>
                 )}
@@ -516,9 +564,15 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
                 </button>
               )}
             </label>
-            <button disabled={!pasted.trim()} type="submit">Usar este destino {icons.arrow}</button>
+            <button disabled={!pasted.trim()} type="submit">
+              Usar este destino {icons.arrow}
+            </button>
           </form>
-          {clipboardHint && <p className="gate-tip" role="status">{clipboardHint}</p>}
+          {clipboardHint && (
+            <p className="gate-tip" role="status">
+              {clipboardHint}
+            </p>
+          )}
 
           {hasLumiExtension() ? (
             <p className="gate-tip">
@@ -537,15 +591,23 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
             </p>
           )}
           <p className="gate-credit">
-            Verificação fornecida por <a href="https://bypass.city/" rel="noopener noreferrer" target="_blank">bypass.city</a>.
-            Se o quadro não carregar,{" "}
-            <a href={`${BYPASS_CITY}${encodeURIComponent(gateUrl)}`} rel="noopener noreferrer" target="_blank">abra em outra aba</a>.
+            Verificação fornecida por{" "}
+            <a href="https://bypass.city/" rel="noopener noreferrer" target="_blank">
+              bypass.city
+            </a>
+            . Se o quadro não carregar,{" "}
+            <a href={`${BYPASS_CITY}${encodeURIComponent(gateUrl)}`} rel="noopener noreferrer" target="_blank">
+              abra em outra aba
+            </a>
+            .
           </p>
         </article>
       )}
 
       {status === "error" && (
-        <p className="reveal-error" role="alert">{error}</p>
+        <p className="reveal-error" role="alert">
+          {error}
+        </p>
       )}
 
       {status === "done" && result && (
@@ -559,7 +621,9 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
               <p className="gate-credit">
                 Link com anúncio resolvido por{" "}
                 {isSafeToOpen(result.provider.site) ? (
-                  <a href={result.provider.site} rel="noopener noreferrer" target="_blank">{result.provider.name}</a>
+                  <a href={result.provider.site} rel="noopener noreferrer" target="_blank">
+                    {result.provider.name}
+                  </a>
                 ) : (
                   <b>{result.provider.name}</b>
                 )}
@@ -570,7 +634,9 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
               <ol className="reveal-hops" aria-label="Rota percorrida">
                 {result.hops.map((hop, index) => (
                   <li key={`${hop.url}-${index}`}>
-                    <b title={hop.kind && hopLabel[hop.kind].title}>{hop.kind ? hopLabel[hop.kind].text : hop.status}</b>
+                    <b title={hop.kind && hopLabel[hop.kind].title}>
+                      {hop.kind ? hopLabel[hop.kind].text : hop.status}
+                    </b>
                     <span>{hop.url}</span>
                   </li>
                 ))}
@@ -586,14 +652,22 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
                 <small>
                   {scanState.result.stats.malicious} malicioso(s) · {scanState.result.stats.suspicious} suspeito(s) ·{" "}
                   {scanState.result.stats.harmless} seguro(s) ·{" "}
-                  <a href={scanState.result.permalink} rel="noopener noreferrer" target="_blank">relatório completo</a>
+                  <a href={scanState.result.permalink} rel="noopener noreferrer" target="_blank">
+                    relatório completo
+                  </a>
                 </small>
               </div>
             )}
             {scanState.status === "pending" && (
-              <p className="reveal-note" role="status">A Lumi está analisando este destino. Pode levar até meio minuto...</p>
+              <p className="reveal-note" role="status">
+                A Lumi está analisando este destino. Pode levar até meio minuto...
+              </p>
             )}
-            {scanState.status === "error" && <p className="reveal-error" role="alert">{scanState.message}</p>}
+            {scanState.status === "error" && (
+              <p className="reveal-error" role="alert">
+                {scanState.message}
+              </p>
+            )}
           </div>
           <div className="reveal-actions">
             <button onClick={copy} type="button">
@@ -624,23 +698,52 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
             <p>Depois do captcha, o link revelado vem sozinho e já vai para a análise. Sem copiar e colar.</p>
             <div className="ext-toast-actions">
               {extensionInstallUrl() ? (
-                <a href={extensionInstallUrl()!} onClick={() => setExtToast(false)} rel="noopener noreferrer" target="_blank">
+                <a
+                  href={extensionInstallUrl()!}
+                  onClick={() => setExtToast(false)}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
                   Instalar {icons.arrow}
                 </a>
               ) : (
-                <button onClick={showLocalInstall} type="button">Instalar {icons.arrow}</button>
+                <button onClick={showLocalInstall} type="button">
+                  Instalar {icons.arrow}
+                </button>
               )}
-              <button className="ext-toast-later" onClick={dismissExtToast} type="button">Agora não</button>
+              <button className="ext-toast-later" onClick={dismissExtToast} type="button">
+                Agora não
+              </button>
             </div>
           </div>
-          <button aria-label="Fechar" className="ext-toast-close" onClick={() => setExtToast(false)} type="button">×</button>
+          <button aria-label="Fechar" className="ext-toast-close" onClick={() => setExtToast(false)} type="button">
+            ×
+          </button>
         </aside>
       )}
 
       <div className="close-info-grid">
-        <article><span>01</span><div><strong>Cole o portal</strong><p>Links encurtados como bit.ly, tinyurl e t.co.</p></div></article>
-        <article><span>02</span><div><strong>Siga a rota</strong><p>A Lumi acompanha cada redirecionamento até o fim, inclusive os escondidos na página.</p></div></article>
-        <article><span>03</span><div><strong>Confira o destino</strong><p>Veja o endereço original e peça uma análise de segurança.</p></div></article>
+        <article>
+          <span>01</span>
+          <div>
+            <strong>Cole o portal</strong>
+            <p>Links encurtados como bit.ly, tinyurl e t.co.</p>
+          </div>
+        </article>
+        <article>
+          <span>02</span>
+          <div>
+            <strong>Siga a rota</strong>
+            <p>A Lumi acompanha cada redirecionamento até o fim, inclusive os escondidos na página.</p>
+          </div>
+        </article>
+        <article>
+          <span>03</span>
+          <div>
+            <strong>Confira o destino</strong>
+            <p>Veja o endereço original e peça uma análise de segurança.</p>
+          </div>
+        </article>
       </div>
       <p className="partner-note">Use apenas em links que você tem permissão para acessar.</p>
     </section>

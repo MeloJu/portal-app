@@ -91,7 +91,12 @@ describe("RevealDestinationPanel", () => {
         { url: resolved.finalUrl, status: 200 },
       ],
     });
-    scan.mockResolvedValue({ url: resolved.finalUrl, verdict: "clean", stats, permalink: "https://www.virustotal.com/gui/url/x" });
+    scan.mockResolvedValue({
+      url: resolved.finalUrl,
+      verdict: "clean",
+      stats,
+      permalink: "https://www.virustotal.com/gui/url/x",
+    });
     render(<RevealDestinationPanel />);
     await reveal();
 
@@ -109,7 +114,12 @@ describe("RevealDestinationPanel", () => {
         { url: resolved.finalUrl, status: 200 },
       ],
     });
-    scan.mockResolvedValue({ url: resolved.finalUrl, verdict: "clean", stats, permalink: "https://www.virustotal.com/gui/url/x" });
+    scan.mockResolvedValue({
+      url: resolved.finalUrl,
+      verdict: "clean",
+      stats,
+      permalink: "https://www.virustotal.com/gui/url/x",
+    });
     render(<RevealDestinationPanel />);
     await reveal();
 
@@ -185,21 +195,32 @@ describe("RevealDestinationPanel", () => {
 
   it("analisa o destino e mostra o veredito", async () => {
     unshorten.mockResolvedValue(resolved);
-    scan.mockResolvedValue({ url: resolved.finalUrl, verdict: "malicious", stats: { ...stats, malicious: 5 }, permalink: "https://www.virustotal.com/gui/url/x" });
+    scan.mockResolvedValue({
+      url: resolved.finalUrl,
+      verdict: "malicious",
+      stats: { ...stats, malicious: 5 },
+      permalink: "https://www.virustotal.com/gui/url/x",
+    });
     render(<RevealDestinationPanel />);
     await reveal();
     await userEvent.click(await screen.findByRole("button", { name: /analisar com a lumi/i }));
 
     expect(await screen.findByText("Perigoso")).toBeInTheDocument();
     expect(scan).toHaveBeenCalledWith(resolved.finalUrl, expect.any(AbortSignal));
-    expect(screen.getByRole("link", { name: /relatório completo/i })).toHaveAttribute("rel", expect.stringContaining("noopener"));
+    expect(screen.getByRole("link", { name: /relatório completo/i })).toHaveAttribute(
+      "rel",
+      expect.stringContaining("noopener"),
+    );
   });
 
   it("repete a análise enquanto o VirusTotal ainda está processando", async () => {
     unshorten.mockResolvedValue(resolved);
-    scan
-      .mockRejectedValueOnce(new tools.ToolsError(202, "ANALYSIS_PENDING", "em andamento"))
-      .mockResolvedValueOnce({ url: resolved.finalUrl, verdict: "clean", stats, permalink: "https://www.virustotal.com/gui/url/x" });
+    scan.mockRejectedValueOnce(new tools.ToolsError(202, "ANALYSIS_PENDING", "em andamento")).mockResolvedValueOnce({
+      url: resolved.finalUrl,
+      verdict: "clean",
+      stats,
+      permalink: "https://www.virustotal.com/gui/url/x",
+    });
     render(<RevealDestinationPanel scanRetryMs={5} />);
     await reveal();
     await userEvent.click(await screen.findByRole("button", { name: /analisar com a lumi/i }));
@@ -260,7 +281,12 @@ describe("RevealDestinationPanel", () => {
 
     it("revela e já analisa o destino colado pelo usuário", async () => {
       unshorten.mockRejectedValueOnce(gated()).mockResolvedValueOnce(resolved);
-      scan.mockResolvedValue({ url: resolved.finalUrl, verdict: "malicious", stats: { ...stats, malicious: 3 }, permalink: "https://www.virustotal.com/gui/url/x" });
+      scan.mockResolvedValue({
+        url: resolved.finalUrl,
+        verdict: "malicious",
+        stats: { ...stats, malicious: 3 },
+        permalink: "https://www.virustotal.com/gui/url/x",
+      });
       render(<RevealDestinationPanel />);
       await reveal(gate);
 
@@ -279,7 +305,12 @@ describe("RevealDestinationPanel", () => {
 
     it("colar um link no campo já revela e analisa, sem clicar no botão", async () => {
       unshorten.mockRejectedValueOnce(gated()).mockResolvedValueOnce(resolved);
-      scan.mockResolvedValue({ url: resolved.finalUrl, verdict: "clean", stats, permalink: "https://www.virustotal.com/gui/url/x" });
+      scan.mockResolvedValue({
+        url: resolved.finalUrl,
+        verdict: "clean",
+        stats,
+        permalink: "https://www.virustotal.com/gui/url/x",
+      });
       render(<RevealDestinationPanel />);
       await reveal(gate);
 
@@ -376,7 +407,9 @@ describe("RevealDestinationPanel", () => {
       });
 
       it("no Firefox, mostra a instalação temporária pelo about:debugging", async () => {
-        const ua = vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0; rv:131.0) Gecko/20100101 Firefox/131.0");
+        const ua = vi
+          .spyOn(navigator, "userAgent", "get")
+          .mockReturnValue("Mozilla/5.0 (Windows NT 10.0; rv:131.0) Gecko/20100101 Firefox/131.0");
         unshorten.mockRejectedValueOnce(gated());
         render(<RevealDestinationPanel />);
         await reveal(gate);
@@ -432,11 +465,20 @@ describe("RevealDestinationPanel", () => {
       it("recebe o link do quadro, fecha e já analisa", async () => {
         document.documentElement.dataset.lumiExtension = "1";
         unshorten.mockRejectedValueOnce(gated()).mockResolvedValueOnce(resolved);
-        scan.mockResolvedValue({ url: resolved.finalUrl, verdict: "clean", stats, permalink: "https://www.virustotal.com/gui/url/x" });
+        scan.mockResolvedValue({
+          url: resolved.finalUrl,
+          verdict: "clean",
+          stats,
+          permalink: "https://www.virustotal.com/gui/url/x",
+        });
         const frame = await openFrame();
         expect(screen.getByText(/extensão da lumi/i)).toBeInTheDocument();
 
-        send({ type: "lumi:bypass-result", url: "https://www.example.com/pagina?x=1" }, "https://bypass.city", frame.contentWindow);
+        send(
+          { type: "lumi:bypass-result", url: "https://www.example.com/pagina?x=1" },
+          "https://bypass.city",
+          frame.contentWindow,
+        );
 
         expect(await screen.findByText("Seguro")).toBeInTheDocument();
         expect(unshorten).toHaveBeenLastCalledWith("https://www.example.com/pagina?x=1", expect.any(AbortSignal));
@@ -482,7 +524,12 @@ describe("RevealDestinationPanel", () => {
 
       it("usa o link copiado na verificação e fecha o quadro", async () => {
         unshorten.mockRejectedValueOnce(gated()).mockResolvedValueOnce(resolved);
-        scan.mockResolvedValue({ url: resolved.finalUrl, verdict: "clean", stats, permalink: "https://www.virustotal.com/gui/url/x" });
+        scan.mockResolvedValue({
+          url: resolved.finalUrl,
+          verdict: "clean",
+          stats,
+          permalink: "https://www.virustotal.com/gui/url/x",
+        });
         render(<RevealDestinationPanel />);
         await reveal(gate);
         await userEvent.click(await screen.findByRole("button", { name: /resolver aqui na lumi/i }));
@@ -533,7 +580,9 @@ describe("RevealDestinationPanel", () => {
 
   it("mostra erro quando a análise falha", async () => {
     unshorten.mockResolvedValue(resolved);
-    scan.mockRejectedValue(new tools.ToolsError(503, "SCAN_NOT_CONFIGURED", "A análise de segurança não está configurada."));
+    scan.mockRejectedValue(
+      new tools.ToolsError(503, "SCAN_NOT_CONFIGURED", "A análise de segurança não está configurada."),
+    );
     render(<RevealDestinationPanel />);
     await reveal();
     await userEvent.click(await screen.findByRole("button", { name: /analisar com a lumi/i }));

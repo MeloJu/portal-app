@@ -15,7 +15,10 @@ describe("TrackerList", () => {
     const group = screen.getByRole("group", { name: /rastreadores no link/i });
     expect(group).toHaveTextContent("2 rastreadores no link");
     expect(screen.getByText("fbclid").closest("li")).toHaveAttribute("title", "Parâmetro no destino final");
-    expect(screen.getByText("sendgrid.net").closest("li")).toHaveAttribute("title", expect.stringMatching(/domínio de rastreamento/));
+    expect(screen.getByText("sendgrid.net").closest("li")).toHaveAttribute(
+      "title",
+      expect.stringMatching(/domínio de rastreamento/),
+    );
     expect(group).toHaveTextContent("e-mail marketing");
   });
 

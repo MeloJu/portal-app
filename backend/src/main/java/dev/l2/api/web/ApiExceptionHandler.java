@@ -12,6 +12,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -43,6 +44,11 @@ public class ApiExceptionHandler {
 	@ExceptionHandler(InvalidLinkException.class)
 	public ResponseEntity<ErrorResponse> onInvalidLink(InvalidLinkException exception) {
 		return body(HttpStatus.BAD_REQUEST, exception.getReason().name(), exception.getMessage());
+	}
+
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ResponseEntity<ErrorResponse> onUnknownParameterValue(MethodArgumentTypeMismatchException exception) {
+		return body(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", exception.getName() + ": valor não reconhecido");
 	}
 
 	@ExceptionHandler(LinkNotFoundException.class)

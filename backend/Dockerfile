@@ -29,4 +29,4 @@ USER 1001:1001
 
 EXPOSE 8080 8081
 
-ENTRYPOINT ["java", "-javaagent:/opt/otel/opentelemetry-javaagent.jar", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-javaagent:/opt/otel/opentelemetry-javaagent.jar", "-jar", "/app/app.jar"]

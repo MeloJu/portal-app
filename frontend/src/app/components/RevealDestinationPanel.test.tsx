@@ -119,6 +119,40 @@ describe("RevealDestinationPanel", () => {
     expect(await screen.findByText("Seguro")).toBeInTheDocument();
   });
 
+  it("mostra os rastreadores do link e copia o link limpo", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    unshorten.mockResolvedValue({
+      ...resolved,
+      finalUrl: "https://www.example.com/p?id=7&fbclid=z",
+      cleanUrl: "https://www.example.com/p?id=7",
+      trackers: [
+        { name: "utm_source", category: "analytics", kind: "param", inFinal: false },
+        { name: "fbclid", category: "social", kind: "param", inFinal: true },
+      ],
+    });
+    render(<RevealDestinationPanel />);
+    await reveal();
+
+    const group = await screen.findByRole("group", { name: /rastreadores no link/i });
+    expect(group).toHaveTextContent("2 rastreadores no link");
+    expect(group).toHaveTextContent("fbclid");
+    expect(group).toHaveTextContent("rede social");
+    await userEvent.click(screen.getByRole("button", { name: /copiar link limpo/i }));
+    expect(writeText).toHaveBeenCalledWith("https://www.example.com/p?id=7");
+    expect(await screen.findByRole("button", { name: /copiado/i })).toBeInTheDocument();
+  });
+
+  it("não mostra rastreadores nem botão de link limpo em link sem rastreador", async () => {
+    unshorten.mockResolvedValue(resolved);
+    render(<RevealDestinationPanel />);
+    await reveal();
+
+    expect(await screen.findByText("DESTINO REVELADO")).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: /rastreadores/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /link limpo/i })).not.toBeInTheDocument();
+  });
+
   it("não gasta análise em link comum sem o usuário pedir", async () => {
     unshorten.mockResolvedValue(resolved);
     render(<RevealDestinationPanel />);

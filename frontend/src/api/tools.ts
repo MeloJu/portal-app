@@ -7,6 +7,16 @@
  * kind "provider": o próximo endereço veio do serviço externo de bypass (ver provider).
  */
 export type Hop = { url: string; status: number; kind?: "decoded" | "page" | "browser" | "provider" };
+export type TrackerCategory = "ads" | "social" | "email" | "analytics" | "affiliate";
+export type Tracker = {
+  name: string;
+  category: TrackerCategory;
+  /** "param": parâmetro no endereço; "domain": a rota passa por um domínio de rastreamento. */
+  kind: "param" | "domain";
+  /** O parâmetro está no destino final (sai no link limpo). */
+  inFinal: boolean;
+};
+
 export type UnshortenResult = {
   originalUrl: string;
   finalUrl: string;
@@ -14,6 +24,10 @@ export type UnshortenResult = {
   resolvedBy: string;
   /** Serviço externo que revelou o destino: a tela dá o crédito. */
   provider?: { name: string; site: string };
+  /** Rastreadores vistos na rota. */
+  trackers?: Tracker[];
+  /** finalUrl sem os parâmetros de rastreamento (só vem quando algo foi removido). */
+  cleanUrl?: string;
 };
 
 export type Verdict = "clean" | "suspicious" | "malicious";

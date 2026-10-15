@@ -7,6 +7,7 @@ import { decodeEmbeddedDestination, decodeKnownShortener } from "./lib/decode.ts
 import { extractDestinationFromHtml } from "./lib/extract.ts";
 import { createGateResolver, type GateResolver, type Provider } from "./lib/provider.ts";
 import { assertPublicHost, isPrivateIp, parsePublicUrl } from "./lib/ssrf.ts";
+import { analyzeTrackers, type Tracker, type TrackerAnalyzer } from "./lib/trackers.ts";
 
 /**
  * kind "decoded": o próximo salto foi lido do próprio endereço, sem requisição (status 0).
@@ -23,6 +24,10 @@ export type UnshortenResult = {
   resolvedBy: "redirect" | HopKind;
   /** Serviço externo que revelou o destino, para dar o crédito na tela. */
   provider?: Provider;
+  /** Rastreadores vistos na rota (parâmetros e domínios); some quando não há nenhum. */
+  trackers?: Tracker[];
+  /** finalUrl sem os parâmetros de rastreamento; só vem quando algo foi removido. */
+  cleanUrl?: string;
 };
 
 /** Faz uma única requisição sem seguir redirecionamento; devolve status, Location e, se for HTML, o corpo. */
@@ -98,6 +103,8 @@ type Options = {
   timeoutMs?: number;
   resolveGate?: GateResolver | null;
   resolveInBrowser?: BrowserResolver | null;
+  /** Detecta rastreadores na rota (padrão: lib/trackers.ts). */
+  analyzeRoute?: TrackerAnalyzer;
 };
 
 const defaultBrowserResolver = createBrowserResolver();
@@ -109,6 +116,7 @@ export async function unshorten(raw: unknown, opts: Options = {}): Promise<Unsho
     timeoutMs = 30000,
     resolveGate = createGateResolver(),
     resolveInBrowser = defaultBrowserResolver,
+    analyzeRoute = analyzeTrackers,
   } = opts;
   const start = parsePublicUrl(raw);
   const hops: Hop[] = [];
@@ -120,7 +128,14 @@ export async function unshorten(raw: unknown, opts: Options = {}): Promise<Unsho
 
   const finish = (status: number): UnshortenResult => {
     hops.push({ url: current.href, status });
-    return { originalUrl: start.href, finalUrl: current.href, hops, resolvedBy, ...(provider && { provider }) };
+    return {
+      originalUrl: start.href,
+      finalUrl: current.href,
+      hops,
+      resolvedBy,
+      ...(provider && { provider }),
+      ...analyzeRoute([start, ...hops.map((hop) => new URL(hop.url))], current),
+    };
   };
   /** O salto que trouxe até aqui foi inferido (decodificado, navegador ou serviço), não um redirecionamento HTTP. */
   const reachedByInference = () => ["decoded", "browser", "provider"].includes(hops.at(-1)?.kind ?? "");

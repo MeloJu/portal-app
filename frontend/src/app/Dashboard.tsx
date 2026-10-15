@@ -56,7 +56,6 @@ const achievements = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const cursorRef = useRef<HTMLDivElement>(null);
   const ambientRef = useRef<{
     context: AudioContext;
     master: GainNode;
@@ -78,48 +77,6 @@ export default function Dashboard() {
     if (savedTheme === "light" || savedTheme === "dark") return savedTheme;
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
-
-  useEffect(() => {
-    const cursor = cursorRef.current;
-    if (!cursor || !window.matchMedia("(pointer: fine)").matches) return;
-
-    let clickTimer = 0;
-
-    function moveCursor(event: PointerEvent) {
-      if (!cursor) return;
-      cursor.style.left = `${event.clientX}px`;
-      cursor.style.top = `${event.clientY}px`;
-      cursor.classList.add("visible");
-
-      const target = event.target as Element | null;
-      cursor.classList.toggle("interactive", Boolean(target?.closest("button, a")));
-      cursor.classList.toggle("over-text", Boolean(target?.closest("input, textarea, select")));
-    }
-
-    function animateClick() {
-      if (!cursor) return;
-      window.clearTimeout(clickTimer);
-      cursor.classList.remove("clicking");
-      void cursor.offsetWidth;
-      cursor.classList.add("clicking");
-      clickTimer = window.setTimeout(() => cursor.classList.remove("clicking"), 520);
-    }
-
-    function hideCursor() {
-      cursor?.classList.remove("visible");
-    }
-
-    window.addEventListener("pointermove", moveCursor);
-    window.addEventListener("pointerdown", animateClick);
-    document.documentElement.addEventListener("mouseleave", hideCursor);
-
-    return () => {
-      window.clearTimeout(clickTimer);
-      window.removeEventListener("pointermove", moveCursor);
-      window.removeEventListener("pointerdown", animateClick);
-      document.documentElement.removeEventListener("mouseleave", hideCursor);
-    };
-  }, []);
 
   useEffect(() => {
     return () => {
@@ -225,14 +182,6 @@ export default function Dashboard() {
 
   return (
     <div className="app-shell">
-      <div className="custom-portal-cursor" ref={cursorRef} aria-hidden="true">
-        <span className="cursor-orbit orbit-alpha"><i /></span>
-        <span className="cursor-orbit orbit-beta"><i /></span>
-        <span className="cursor-center" />
-        <span className="cursor-spark spark-one" />
-        <span className="cursor-spark spark-two" />
-        <span className="cursor-spark spark-three" />
-      </div>
       <aside className="sidebar">
         <div className="brand">
           <img src={lumiLogo} alt="Lumi Links — Pequenos links, infinitos destinos" />

@@ -707,6 +707,10 @@ button {
   font-weight: 600;
 }
 
+.primary-button:hover{
+  background: linear-gradient(135deg, #9075fa, #997aff);
+}
+
 .primary-button:disabled {
   cursor: wait;
   opacity: 0.72;

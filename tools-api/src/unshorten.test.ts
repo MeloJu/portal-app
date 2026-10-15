@@ -345,3 +345,31 @@ describe("unshorten: encurtadores conhecidos com destino no endereço", () => {
     expect(await code(unshorten(link, { fetchHop: fake({}), resolveGate: null, resolveInBrowser: null }))).toBe("FORBIDDEN_HOST");
   });
 });
+
+describe("unshorten: rastreadores", () => {
+  it("devolve os rastreadores da rota e o link limpo", async () => {
+    const fetchHop = fake({
+      "https://bit.ly/abc?utm_source=zap": [301, "https://loja.com/p?id=7&fbclid=z"],
+      "https://loja.com/p?id=7&fbclid=z": [200, null],
+    });
+    const r = await unshorten("https://bit.ly/abc?utm_source=zap", { fetchHop, resolveGate: null, resolveInBrowser: null });
+    expect(r.trackers?.map((t) => [t.name, t.inFinal])).toEqual([
+      ["utm_source", false],
+      ["fbclid", true],
+    ]);
+    expect(r.cleanUrl).toBe("https://loja.com/p?id=7");
+    expect(r.finalUrl).toBe("https://loja.com/p?id=7&fbclid=z");
+  });
+
+  it("usa o analisador injetado em vez do padrão", async () => {
+    const analyzeRoute = (route: URL[], final: URL) => ({ cleanUrl: `${route.length}|${final.href}` });
+    const r = await unshorten("https://example.com/", { fetchHop: fake({ "https://example.com/": [200, null] }), analyzeRoute });
+    expect(r.cleanUrl).toBe("2|https://example.com/");
+  });
+
+  it("não inclui trackers nem cleanUrl quando o link é limpo", async () => {
+    const r = await unshorten("https://example.com/", { fetchHop: fake({ "https://example.com/": [200, null] }) });
+    expect(r.trackers).toBeUndefined();
+    expect(r.cleanUrl).toBeUndefined();
+  });
+});

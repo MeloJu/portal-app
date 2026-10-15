@@ -2838,6 +2838,56 @@ html[data-theme="dark"] .gate-paste-clip {
   color: #6e56ce;
 }
 
+.reveal-trackers {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  border: 1px solid #e3dcf7;
+  background: #f8f6ff;
+}
+
+.reveal-trackers strong {
+  font: 600 11px "Space Grotesk", sans-serif;
+  color: #5c48c9;
+}
+
+.reveal-trackers ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reveal-trackers li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: white;
+  border: 1px solid #ddd5f5;
+  overflow-wrap: anywhere;
+}
+
+.reveal-trackers li b {
+  font-size: 9px;
+  font-weight: 600;
+  color: #4a2ac5;
+}
+
+.reveal-trackers li small,
+.reveal-trackers p {
+  color: #8e8b9d;
+  font-size: 8px;
+}
+
+.reveal-trackers p {
+  margin: 8px 0 0;
+}
+
 .reveal-note {
   margin: 10px 0 0 !important;
   color: #6e56ce !important;

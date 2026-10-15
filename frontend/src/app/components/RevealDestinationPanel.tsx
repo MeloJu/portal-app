@@ -1,6 +1,7 @@
 import { ClipboardEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { Hop, scan, ScanResult, ToolsError, unshorten, UnshortenResult, Verdict } from "../../api/tools";
 import { icons } from "../icons";
+import TrackerList from "./TrackerList";
 
 type Props = {
   /** Espera entre tentativas enquanto o VirusTotal ainda analisa (ms). */
@@ -96,6 +97,7 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
   const [result, setResult] = useState<UnshortenResult | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [cleanCopied, setCleanCopied] = useState(false);
   const [scanState, setScanState] = useState<ScanState>({ status: "idle" });
   const [gateUrl, setGateUrl] = useState("");
   const [frameOpen, setFrameOpen] = useState(false);
@@ -182,6 +184,7 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
     setResult(null);
     setError("");
     setCopied(false);
+    setCleanCopied(false);
     setScanState({ status: "idle" });
     setGateUrl("");
     setFrameOpen(false);
@@ -331,6 +334,17 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
     }
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
+  }
+
+  async function copyClean() {
+    if (!result?.cleanUrl) return;
+    try {
+      await navigator.clipboard?.writeText(result.cleanUrl);
+    } catch {
+      return;
+    }
+    setCleanCopied(true);
+    window.setTimeout(() => setCleanCopied(false), 1600);
   }
 
   const isLoading = status === "loading";
@@ -563,6 +577,8 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
               </ol>
             )}
 
+            {result.trackers && <TrackerList trackers={result.trackers} />}
+
             {scanState.status === "done" && scanState.result && (
               <div className={`reveal-scan ${scanState.result.verdict}`} role="status">
                 <strong>{verdictCopy[scanState.result.verdict].label}</strong>
@@ -583,6 +599,11 @@ export default function RevealDestinationPanel({ scanRetryMs = 8000, maxScanRetr
             <button onClick={copy} type="button">
               {icons.copy} {copied ? "Copiado" : "Copiar"}
             </button>
+            {result.cleanUrl && (
+              <button onClick={() => void copyClean()} type="button">
+                {icons.copy} {cleanCopied ? "Copiado" : "Copiar link limpo"}
+              </button>
+            )}
             <button disabled={scanning || scanState.status === "done"} onClick={() => void analyze()} type="button">
               {icons.shield} {scanning ? "Analisando..." : "Analisar com a Lumi"}
             </button>

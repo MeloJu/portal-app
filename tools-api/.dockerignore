@@ -1,0 +1,7 @@
+node_modules
+.env
+*.md
+Dockerfile
+.dockerignore
+src/**/*.test.ts
+vitest.config.ts

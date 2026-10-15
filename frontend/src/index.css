@@ -1519,6 +1519,31 @@ button {
   min-width: 5px;
   border-radius: 4px 4px 1px 1px;
   background: linear-gradient(to top, #ece9ff, #9b8af2);
+  transform-origin: bottom;
+  animation: barGrow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.bars span:nth-child(1) { animation-delay: 0ms; }
+.bars span:nth-child(2) { animation-delay: 50ms; }
+.bars span:nth-child(3) { animation-delay: 100ms; }
+.bars span:nth-child(4) { animation-delay: 150ms; }
+.bars span:nth-child(5) { animation-delay: 200ms; }
+.bars span:nth-child(6) { animation-delay: 250ms; }
+.bars span:nth-child(7) { animation-delay: 300ms; }
+.bars span:nth-child(8) { animation-delay: 350ms; }
+.bars span:nth-child(9) { animation-delay: 400ms; }
+.bars span:nth-child(10) { animation-delay: 450ms; }
+.bars span:nth-child(11) { animation-delay: 500ms; }
+.bars span:nth-child(12) { animation-delay: 550ms; }
+
+@keyframes barGrow {
+  from {
+    transform: scaleY(0);
+  }
+
+  to {
+    transform: scaleY(1);
+  }
 }
 
 .bars .highlight {

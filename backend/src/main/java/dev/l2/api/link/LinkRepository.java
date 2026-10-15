@@ -3,6 +3,7 @@ package dev.l2.api.link;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -34,5 +35,17 @@ public interface LinkRepository extends JpaRepository<Link, UUID> {
 
 	@Query("select l from Link l where " + OWNED + " and not (" + OPEN + ")")
 	Page<Link> findClosedByOwnerId(@Param("ownerId") UUID ownerId, @Param("now") Instant now, Pageable pageable);
+
+	@Modifying(clearAutomatically = true, flushAutomatically = true)
+	@Query(nativeQuery = true, value = """
+			update links
+			   set travel_count = travel_count + 1, updated_at = now()
+			 where code = :code
+			   and closed_at is null
+			   and paused = false
+			   and (expires_at is null or expires_at > cast(:now as timestamptz))
+			   and (max_travels is null or travel_count < max_travels)
+			""")
+	int registerTravel(@Param("code") String code, @Param("now") Instant now);
 
 }

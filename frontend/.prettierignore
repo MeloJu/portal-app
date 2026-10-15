@@ -4,9 +4,6 @@ node_modules
 coverage
 package-lock.json
 
-# CSS fica fora do padrão: o Prettier quebraria regras de uma linha em várias (centenas de linhas de diff).
-*.css
-
 # Protótipo importado do Figma Make (linhas de até ~190 caracteres): formatar geraria ~900 linhas de diff.
 # Quando a tela for refatorada, tirar este arquivo da lista e formatá-lo no mesmo PR.
 src/app/Dashboard.tsx

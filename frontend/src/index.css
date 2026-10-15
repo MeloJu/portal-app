@@ -155,15 +155,14 @@ button {
 }
 
 @media (pointer: fine) {
-  .app-shell,
-  .app-shell button,
-  .app-shell a {
+  /* O portal é o único ponteiro em todas as rotas. A classe só entra depois do primeiro movimento. */
+  html.has-portal-cursor,
+  html.has-portal-cursor * {
     cursor: none;
   }
 
-  .app-shell input,
-  .app-shell textarea,
-  .app-shell select {
+  /* Em campos de texto a seta do sistema volta (o portal some): precisa ver onde digita. */
+  html.has-portal-cursor :is(input, textarea, select) {
     cursor: text;
   }
 

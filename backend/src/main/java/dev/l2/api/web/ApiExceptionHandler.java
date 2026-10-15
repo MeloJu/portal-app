@@ -2,6 +2,7 @@ package dev.l2.api.web;
 
 import dev.l2.api.auth.EmailAlreadyUsedException;
 import dev.l2.api.auth.InvalidCredentialsException;
+import dev.l2.api.link.InvalidLinkException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -35,6 +36,15 @@ public class ApiExceptionHandler {
 	@ExceptionHandler(InvalidCredentialsException.class)
 	public ResponseEntity<ErrorResponse> onInvalidCredentials(InvalidCredentialsException exception) {
 		return body(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", exception.getMessage());
+	}
+
+	/**
+	 * Destino ou alias recusado: o code e o proprio motivo (INVALID_URL, SELF_LOOP,
+	 * RESERVED_ALIAS).
+	 */
+	@ExceptionHandler(InvalidLinkException.class)
+	public ResponseEntity<ErrorResponse> onInvalidLink(InvalidLinkException exception) {
+		return body(HttpStatus.BAD_REQUEST, exception.getReason().name(), exception.getMessage());
 	}
 
 	private static String describe(FieldError error) {

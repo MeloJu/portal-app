@@ -55,12 +55,16 @@ class LinkServiceTests {
 		this.events.deleteAll();
 		this.links.deleteAll();
 		this.users.deleteAll();
-		this.ana = this.users.save(new User("ana@example.com", hash(), "Ana")).getId();
-		this.bruno = this.users.save(new User("bruno@example.com", hash(), "Bruno")).getId();
+		this.ana = this.users.save(new User(unique() + "-ana@example.com", hash(), "Ana")).getId();
+		this.bruno = this.users.save(new User(unique() + "-bruno@example.com", hash(), "Bruno")).getId();
 	}
 
 	private static String hash() {
 		return "$2a$10$" + "x".repeat(53);
+	}
+
+	private static String unique() {
+		return "t" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
 	}
 
 	private static CreateLinkRequest request(String targetUrl, String alias) {

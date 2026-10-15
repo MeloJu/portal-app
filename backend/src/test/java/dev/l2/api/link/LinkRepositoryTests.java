@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,24 +39,31 @@ class LinkRepositoryTests {
 
 	private final Pageable firstPage = PageRequest.of(0, 20);
 
+	private String tag;
+
 	private User ana;
 
 	private User bruno;
 
 	@BeforeEach
 	void populate() {
-		this.ana = this.users.save(new User("ana@example.com", hash(), "Ana"));
-		this.bruno = this.users.save(new User("bruno@example.com", hash(), "Bruno"));
+		this.tag = "t" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+		this.ana = this.users.save(new User(this.tag + "-ana@example.com", hash(), "Ana"));
+		this.bruno = this.users.save(new User(this.tag + "-bruno@example.com", hash(), "Bruno"));
 
-		link(this.ana, "ana-ativo");
-		Link paused = link(this.ana, "ana-pausado");
+		link(this.ana, code("ativo"));
+		Link paused = link(this.ana, code("pausado"));
 		paused.setPaused(true);
-		link(this.ana, "ana-fechado").close(this.now.minus(1, ChronoUnit.HOURS));
-		link(this.ana, "ana-expirado").setExpiresAt(this.now.minus(1, ChronoUnit.MINUTES));
-		exhaust(link(this.ana, "ana-exaurido"));
+		link(this.ana, code("fechado")).close(this.now.minus(1, ChronoUnit.HOURS));
+		link(this.ana, code("expirado")).setExpiresAt(this.now.minus(1, ChronoUnit.MINUTES));
+		exhaust(link(this.ana, code("exaurido")));
 
-		link(this.bruno, "bruno-ativo");
+		link(this.bruno, code("do-bruno"));
 		this.entityManager.flush();
+	}
+
+	private String code(String suffix) {
+		return this.tag + "-" + suffix;
 	}
 
 	private static String hash() {
@@ -74,26 +83,26 @@ class LinkRepositoryTests {
 		this.entityManager.refresh(link);
 	}
 
-	private static java.util.List<String> codesOf(Page<Link> page) {
+	private static List<String> codesOf(Page<Link> page) {
 		return page.getContent().stream().map(Link::getCode).toList();
 	}
 
 	@Test
 	void listsOnlyTheActiveOnes() {
 		assertThat(codesOf(this.links.findActiveByOwnerId(this.ana.getId(), this.now, this.firstPage)))
-				.containsExactly("ana-ativo");
+				.containsExactly(code("ativo"));
 	}
 
 	@Test
 	void listsOnlyThePausedOnes() {
 		assertThat(codesOf(this.links.findPausedByOwnerId(this.ana.getId(), this.now, this.firstPage)))
-				.containsExactly("ana-pausado");
+				.containsExactly(code("pausado"));
 	}
 
 	@Test
 	void treatsClosedExpiredAndExhaustedAsClosed() {
 		assertThat(codesOf(this.links.findClosedByOwnerId(this.ana.getId(), this.now, this.firstPage)))
-				.containsExactlyInAnyOrder("ana-fechado", "ana-expirado", "ana-exaurido");
+				.containsExactlyInAnyOrder(code("fechado"), code("expirado"), code("exaurido"));
 	}
 
 	@Test
@@ -108,18 +117,18 @@ class LinkRepositoryTests {
 
 	@Test
 	void pausedLinkThatAlsoExpiredCountsAsClosedOnly() {
-		Link link = this.links.findByCode("ana-pausado").orElseThrow();
+		Link link = this.links.findByCode(code("pausado")).orElseThrow();
 		link.setExpiresAt(this.now.minus(1, ChronoUnit.MINUTES));
 		this.entityManager.flush();
 
 		assertThat(codesOf(this.links.findPausedByOwnerId(this.ana.getId(), this.now, this.firstPage))).isEmpty();
 		assertThat(codesOf(this.links.findClosedByOwnerId(this.ana.getId(), this.now, this.firstPage)))
-				.contains("ana-pausado");
+				.contains(code("pausado"));
 	}
 
 	@Test
 	void expiresExactlyAtTheDeadline() {
-		Link link = this.links.findByCode("ana-ativo").orElseThrow();
+		Link link = this.links.findByCode(code("ativo")).orElseThrow();
 		link.setExpiresAt(this.now);
 		this.entityManager.flush();
 
@@ -130,15 +139,15 @@ class LinkRepositoryTests {
 	@Test
 	void neverCrossesOwners() {
 		assertThat(codesOf(this.links.findByOwnerId(this.ana.getId(), this.firstPage)))
-				.doesNotContain("bruno-ativo");
+				.doesNotContain(code("do-bruno"));
 		assertThat(codesOf(this.links.findActiveByOwnerId(this.bruno.getId(), this.now, this.firstPage)))
-				.containsExactly("bruno-ativo");
+				.containsExactly(code("do-bruno"));
 	}
 
 	@Test
 	void findsByCodeOnlyForTheOwner() {
-		assertThat(this.links.findByCodeAndOwnerId("ana-ativo", this.ana.getId())).isPresent();
-		assertThat(this.links.findByCodeAndOwnerId("ana-ativo", this.bruno.getId())).isEmpty();
+		assertThat(this.links.findByCodeAndOwnerId(code("ativo"), this.ana.getId())).isPresent();
+		assertThat(this.links.findByCodeAndOwnerId(code("ativo"), this.bruno.getId())).isEmpty();
 	}
 
 	@Test

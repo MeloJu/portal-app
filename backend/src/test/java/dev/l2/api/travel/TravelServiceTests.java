@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -65,7 +66,8 @@ class TravelServiceTests {
 		this.travels.deleteAll();
 		this.links.deleteAll();
 		this.users.deleteAll();
-		this.owner = this.users.save(new User("ana@example.com", "$2a$10$" + "x".repeat(53), "Ana"));
+		String email = "t" + UUID.randomUUID().toString().replace("-", "").substring(0, 10) + "@example.com";
+		this.owner = this.users.save(new User(email, "$2a$10$" + "x".repeat(53), "Ana"));
 	}
 
 	private Link link(String code) {

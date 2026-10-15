@@ -10,6 +10,8 @@
  * BROWSER_CHANNEL          navegador instalado usado pelo playwright-core: msedge (padrão) ou chrome.
  * BROWSER_EXECUTABLE_PATH  caminho de um Chromium, no lugar do canal.
  * BROWSER_WAIT_MS          quanto esperar a página revelar o destino (padrão: 12000).
+ * BROWSER_SANDBOX=off      desliga o sandbox do Chromium (padrão: ligado). Só para ambientes onde ele não
+ *                          consegue iniciar; as páginas de anúncio são conteúdo hostil, então evite.
  */
 import dns from "node:dns/promises";
 import net from "node:net";
@@ -42,7 +44,7 @@ export function isDestination(candidate: URL, gate: URL): boolean {
   return !isAdGate(candidate.hostname);
 }
 
-type Config = { enabled?: boolean; channel?: string; executablePath?: string; waitMs?: number };
+type Config = { enabled?: boolean; channel?: string; executablePath?: string; waitMs?: number; sandbox?: boolean };
 
 export function createBrowserResolver(config: Config = {}): BrowserResolver | null {
   const {
@@ -50,6 +52,8 @@ export function createBrowserResolver(config: Config = {}): BrowserResolver | nu
     channel = process.env.BROWSER_CHANNEL || "msedge",
     executablePath = process.env.BROWSER_EXECUTABLE_PATH || undefined,
     waitMs = Number(process.env.BROWSER_WAIT_MS) || 12_000,
+    // O Playwright abre o Chromium com --no-sandbox por padrão; aqui o sandbox fica ligado.
+    sandbox = process.env.BROWSER_SANDBOX !== "off",
   } = config;
   if (!enabled) return null;
 
@@ -58,7 +62,7 @@ export function createBrowserResolver(config: Config = {}): BrowserResolver | nu
   async function getBrowser() {
     if (!browser) {
       const { chromium } = await import("playwright-core");
-      browser = chromium.launch({ headless: true, ...(executablePath ? { executablePath } : { channel }) });
+      browser = chromium.launch({ headless: true, chromiumSandbox: sandbox, ...(executablePath ? { executablePath } : { channel }) });
       browser.then((b) => b.on("disconnected", () => (browser = null))).catch(() => (browser = null));
     }
     return browser;
@@ -110,9 +114,13 @@ export function createBrowserResolver(config: Config = {}): BrowserResolver | nu
         return route.continue();
       });
 
+      // Um prazo só para carregar e esperar: senão o navegador gastaria até 2x waitMs e não sobraria
+      // tempo para o serviço de bypass dentro do limite total da requisição.
+      const deadline = Date.now() + waitMs;
       await page.goto(gate.href, { waitUntil: "domcontentloaded", timeout: waitMs }).catch(() => {});
-      if (!found && !captcha && !signal.aborted) {
-        await Promise.race([done, new Promise((resolve) => setTimeout(resolve, waitMs))]);
+      const left = deadline - Date.now();
+      if (!found && !captcha && !signal.aborted && left > 0) {
+        await Promise.race([done, new Promise((resolve) => setTimeout(resolve, left))]);
       }
       return captcha ? null : found;
     } finally {

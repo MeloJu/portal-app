@@ -196,6 +196,19 @@ O nginx do front ganha:
 
 ⚠️ Isso é trabalho do pessoal do front — **alguém precisa avisá-los**.
 
+### `Referrer-Policy` na Viagem direta é da API
+
+O item acima cobre a Travessia, que é página do front. **`GET /r/{code}` não passa pelo
+nginx**: é redirect da própria API, direto do Ingress para a 8080. Nenhuma regra do front
+alcança essa resposta, então sem header ali o site de destino recebe o código curto no
+`Referer` — exatamente o vazamento que a regra do front existe para evitar.
+
+Por isso o `/r/{code}` responde com `Referrer-Policy: no-referrer` emitido pelo
+`TravelController`, ao lado do `Cache-Control: no-store`. Tem teste de API exigindo o
+header (`TravelApiTests.doesNotLeakTheShortCodeToTheDestination`).
+
+Vale a regra geral: **rota que responde fora do nginx precisa dos próprios cabeçalhos**.
+
 ---
 
 ## Riscos conhecidos e aceitos

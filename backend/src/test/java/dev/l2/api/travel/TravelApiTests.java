@@ -104,6 +104,15 @@ class TravelApiTests {
 	}
 
 	@Test
+	void doesNotLeakTheShortCodeToTheDestination() throws Exception {
+		String code = link(session(), "");
+
+		this.mvc.perform(get("/r/" + code).header(HttpHeaders.USER_AGENT, CHROME))
+				.andExpect(status().isFound())
+				.andExpect(header().string("Referrer-Policy", "no-referrer"));
+	}
+
+	@Test
 	void countsTheTravelOnTheDirectRedirectToo() throws Exception {
 		Cookie session = session();
 		String code = link(session, "");

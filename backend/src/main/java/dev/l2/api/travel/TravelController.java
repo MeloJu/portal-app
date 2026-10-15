@@ -35,6 +35,7 @@ public class TravelController {
 		TravelResponse travel = this.travels.travel(code, userAgent, referrer);
 		return ResponseEntity.status(HttpStatus.FOUND)
 				.header(HttpHeaders.LOCATION, travel.targetUrl())
+				.header("Referrer-Policy", "no-referrer")
 				.cacheControl(CacheControl.noStore())
 				.build();
 	}

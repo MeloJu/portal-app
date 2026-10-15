@@ -94,6 +94,17 @@ jobs:
 
       - run: scripts/smoke-images.sh
 
+  tracing:
+    # Sobe Postgres + Collector + o backend com o agente OpenTelemetry e confere que os traces
+    # (inclusive o do banco), o traceparent vindo do navegador e as metricas do dashboard chegam.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: docker build -t lumi-backend:test backend
+
+      - run: scripts/otel-it.sh
+
   gitleaks:
     runs-on: ubuntu-latest
     steps:

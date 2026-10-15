@@ -1,0 +1,33 @@
+# Collector de teste: mesma ideia do que roda no cluster (portal-gitops/observability/values/
+# otel-collector.yaml), mas sem Tempo. O debug imprime os spans no log para o teste conferir.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+connectors:
+  spanmetrics:
+    metrics_flush_interval: 5s
+    histogram:
+      explicit:
+        buckets: [5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2500ms, 5s]
+    dimensions:
+      - name: http.route
+      - name: http.request.method
+      - name: http.response.status_code
+
+exporters:
+  debug:
+    verbosity: detailed
+  prometheus:
+    endpoint: 0.0.0.0:8889
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [debug, spanmetrics]
+    metrics:
+      receivers: [spanmetrics]
+      exporters: [prometheus]

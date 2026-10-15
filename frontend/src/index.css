@@ -485,6 +485,12 @@ button {
   background: white;
 }
 
+.icon-button.active {
+  border-color: #ded8f7;
+  color: #6550c9;
+  background: #fff;
+}
+
 .theme-button {
   display: grid;
   width: 38px;
@@ -3882,6 +3888,12 @@ html[data-theme="dark"] .ambient-button {
   border-color: #2b2842;
   color: #aaa3c7;
   background: #151426;
+}
+
+html[data-theme="dark"] .icon-button.active {
+  border-color: #ded8f7;
+  color: #6550c9;
+  background: #fff;
 }
 
 html[data-theme="dark"] .theme-button {

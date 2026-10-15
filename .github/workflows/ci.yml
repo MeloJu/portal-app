@@ -66,6 +66,34 @@ jobs:
 
       - run: ./mvnw -B verify
 
+  images:
+    # Garante que as tres imagens constroem e que o frontend entrega os cabecalhos de
+    # seguranca (CSP, Referrer-Policy na Travessia), rodando com as restricoes do K8s.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: backend/Dockerfile
+          failure-threshold: warning
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: frontend/Dockerfile
+          failure-threshold: warning
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: tools-api/Dockerfile
+          failure-threshold: warning
+
+      - run: docker build -t lumi-backend:test backend
+      - run: docker build -t lumi-frontend:test frontend
+      - run: docker build -t lumi-tools-api:test tools-api
+
+      - run: scripts/smoke-images.sh
+
   gitleaks:
     runs-on: ubuntu-latest
     steps:

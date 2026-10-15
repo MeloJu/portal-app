@@ -68,6 +68,7 @@ export default function Dashboard() {
   const [created, setCreated] = useState("");
   const [copied, setCopied] = useState("");
   const [isOpening, setIsOpening] = useState(false);
+  const [notificationsActive, setNotificationsActive] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [autoShield, setAutoShield] = useState(true);
   const [portalFilter, setPortalFilter] = useState("Todos");
@@ -274,7 +275,13 @@ export default function Dashboard() {
               </Icon>
               <span className="sound-waves"><i /><i /><i /></span>
             </button>
-            <button className="icon-button" aria-label="Notificações" type="button">
+            <button
+              aria-label="Notificações"
+              aria-pressed={notificationsActive}
+              className={`icon-button ${notificationsActive ? "active" : ""}`}
+              onClick={() => setNotificationsActive(!notificationsActive)}
+              type="button"
+            >
               <Icon><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" /></Icon>
               <i />
             </button>

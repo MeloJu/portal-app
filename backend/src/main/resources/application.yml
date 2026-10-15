@@ -19,6 +19,8 @@ app:
   jwt:
     secret: ${JWT_SECRET}
     ttl: 8h
+  session:
+    secure-cookie: ${SESSION_COOKIE_SECURE:true}
 
 # Actuator em porta separada: o Ingress so roteia a 8080 (docs/SECURITY.md, secao 7).
 management:

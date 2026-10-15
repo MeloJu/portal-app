@@ -33,6 +33,34 @@ O backend le `DB_URL`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET` e `PUBLIC_BASE_URL
 ambiente, sem default para os segredos: se o `JWT_SECRET` faltar ou tiver menos de 256
 bits, a app falha ao iniciar de proposito.
 
+## Imagem do backend
+
+O CI publica em `ghcr.io/meloju/portal-app/backend` a cada push em `main` ou `develop`
+(workflow `publish-backend.yml`); em PR a imagem só é construída, para quebrar o PR se o
+Dockerfile parar de funcionar. As tags são o nome da branch, `sha-<commit>` e `latest`
+(só em `main`).
+
+Para rodar a imagem localmente, apontando para o Postgres do compose:
+
+```bash
+cd backend && docker build -t l2-api:dev .
+
+docker run --rm -p 8080:8080 -p 8081:8081 \
+  --read-only --tmpfs /tmp \
+  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/lumi \
+  -e DB_USER=lumi -e DB_PASSWORD=lumi \
+  -e PUBLIC_BASE_URL=http://localhost:8080 \
+  -e JWT_SECRET="$(openssl rand -base64 32)" \
+  l2-api:dev
+
+curl localhost:8081/actuator/health   # {"status":"UP"}
+```
+
+Roda como `USER 1001` e com a raiz somente leitura, igual ao Deployment
+(`backend/docs/SECURITY.md`, seção 10) — daí o `--tmpfs /tmp`, que é onde a JVM e o Tomcat
+escrevem. O agente OTel vem anexado mas desligado (`OTEL_SDK_DISABLED=true`): para ligar,
+passe `OTEL_SDK_DISABLED=false` e `OTEL_EXPORTER_OTLP_ENDPOINT`.
+
 O `tools-api` expõe `POST /tools/unshorten` (segue os redirecionamentos no servidor, com proteção SSRF; em links com anúncio lê o destino do endereço ou da página, opcionalmente abre a página num navegador headless (`BROWSER_RESOLVER=on`) e, com `BYPASS_API_URL` configurado (a chave é opcional), pergunta a um serviço de bypass, creditado na tela; nunca resolve captcha nem acessa endereços de verificação de etapa) e `POST /tools/scan` (proxy do VirusTotal; a chave fica só no servidor). Testes: `cd tools-api && npm test`.
 
 ## Testando a API

@@ -40,10 +40,6 @@ public class ApiExceptionHandler {
 		return body(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", exception.getMessage());
 	}
 
-	/**
-	 * Destino ou alias recusado: o code e o proprio motivo (INVALID_URL, SELF_LOOP,
-	 * RESERVED_ALIAS).
-	 */
 	@ExceptionHandler(InvalidLinkException.class)
 	public ResponseEntity<ErrorResponse> onInvalidLink(InvalidLinkException exception) {
 		return body(HttpStatus.BAD_REQUEST, exception.getReason().name(), exception.getMessage());

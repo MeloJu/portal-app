@@ -30,6 +30,12 @@ management:
     web:
       exposure:
         include: health,info,prometheus
+  metrics:
+    distribution:
+      # Publica os buckets do histograma de latencia (http_server_requests_seconds_bucket);
+      # sem isso o dashboard do Grafana nao consegue calcular p50/p95/p99.
+      percentiles-histogram:
+        http.server.requests: true
 
 springdoc:
   api-docs:

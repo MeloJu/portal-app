@@ -1,3 +1,4 @@
 # Commits só de formatação: o GitHub e o "git blame --ignore-revs-file" os ignoram.
 # Uso local: git config blame.ignoreRevsFile .git-blame-ignore-revs
 d66382d1eb69ffbf766cf4847ad28f3672683311  # style(frontend): formata o código com Prettier
+552e04f22291c226e84deb088a35db77b28363f5  # style(frontend): formata o index.css com Prettier

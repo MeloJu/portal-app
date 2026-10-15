@@ -1014,8 +1014,12 @@ button {
   border-radius: 17px;
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 8px 24px rgba(39, 45, 82, 0.035);
+  transition: 0.3s;
 }
 
+.stat-card:hover{
+  scale: 1.03;
+}
 .stat-icon {
   display: grid;
   width: 42px;

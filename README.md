@@ -35,6 +35,16 @@ bits, a app falha ao iniciar de proposito.
 
 O `tools-api` expõe `POST /tools/unshorten` (segue os redirecionamentos no servidor, com proteção SSRF; em links com anúncio lê o destino do endereço ou da página, opcionalmente abre a página num navegador headless (`BROWSER_RESOLVER=on`) e, com `BYPASS_API_URL` configurado (a chave é opcional), pergunta a um serviço de bypass, creditado na tela; nunca resolve captcha nem acessa endereços de verificação de etapa) e `POST /tools/scan` (proxy do VirusTotal; a chave fica só no servidor). Testes: `cd tools-api && npm test`.
 
+## Testando a API
+
+O contrato fica em [`docs/openapi.yaml`](docs/openapi.yaml) e abre direto no Swagger UI da
+app em `http://localhost:8080/swagger-ui.html`, onde o navegador guarda o cookie de sessao
+sozinho. Para Postman, o workspace versionado esta em `postman/` (importe o diretorio ou o
+proprio `docs/openapi.yaml`).
+
+A sessao viaja em cookie `HttpOnly`, que Postman e curl so enviam por HTTPS. Para testar em
+`http://localhost`, ponha `SESSION_COOKIE_SECURE=false` no `.env` -- nunca em producao.
+
 ## Gitflow
 
 `main` (produção) ← `develop` (integração) ← `feature/*`. Hotfixes saem de `main`, releases de `develop`.

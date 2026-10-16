@@ -41,3 +41,6 @@ backend/target/
 Thumbs.db
 # Export original do Figma Make
 *.zip
+
+# Base GeoIP da MaxMind: a licenca proibe redistribuir; vive em volume, nunca no Git
+*.mmdb

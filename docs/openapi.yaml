@@ -37,6 +37,7 @@ paths:
           content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { description: E-mail já cadastrado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /api/auth/login:
     post:
       tags: [auth]
@@ -54,6 +55,7 @@ paths:
             Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
           content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } }
         '401': { description: Credenciais inválidas (mensagem genérica, não revela se o e-mail existe) }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /api/auth/logout:
     post:
       tags: [auth]
@@ -159,6 +161,7 @@ paths:
         '404': { description: Código curto inexistente }
         '410': { description: Link Fechado (Ameaça bloqueada), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '423': { description: Link Pausado (Ameaça bloqueada), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /r/{code}:
     parameters: [ { $ref: '#/components/parameters/Code' } ]
     get:
@@ -172,6 +175,7 @@ paths:
         '404': { description: Código curto inexistente }
         '410': { description: Link Fechado }
         '423': { description: Link Pausado }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   # ---------- DASHBOARD (Visão geral + Viagens) ----------
   /api/dashboard/summary:
@@ -257,6 +261,15 @@ components:
   responses:
     BadRequest:
       description: Dados inválidos (inclui URL inválida, loop e Alias reservado)
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    TooManyRequests:
+      description: |
+        Balde por IP estourado (Bucket4j em memória). Conta como Ameaça `RATE_LIMIT`, uma
+        vez por IP a cada janela — não uma por requisição barrada.
+      headers:
+        Retry-After:
+          description: Segundos até o próximo token.
+          schema: { type: integer }
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
   schemas:
     RegisterRequest:

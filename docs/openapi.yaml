@@ -135,8 +135,14 @@ paths:
     get:
       tags: [links]
       summary: Estatísticas de Viagens de um Link
+      description: |
+        `totalTravels`, `humanTravels`, `botTravels` e `countries` valem para todo o histórico do
+        Link (inclusive Fechado). `travelsByDay` cobre os últimos `days` dias em UTC, com um ponto
+        por dia e zero nos dias sem Viagem. Viagem sem país (GeoIP ainda não preenche) não entra
+        em `countries`.
       parameters:
-        - { name: days, in: query, schema: { type: integer, default: 12 } }
+        - { name: days, in: query, schema: { type: integer, default: 12, minimum: 1, maximum: 90 },
+            description: dias da janela, contando hoje (UTC); fora do intervalo é ajustado }
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/LinkStats' } } } }
         '404': { description: Não existe ou não é do Usuário }
@@ -172,14 +178,22 @@ paths:
     get:
       tags: [dashboard]
       summary: Cards da Visão geral
+      description: |
+        `totalTravels` e `activeLinks` valem hoje; Links Fechados continuam somando Viagens.
+        `travelsChangePct` compara os últimos `days` dias com os `days` dias anteriores.
+      parameters:
+        - { name: days, in: query, schema: { type: integer, default: 12, minimum: 1, maximum: 90 },
+            description: tamanho da janela de comparação de travelsChangePct; fora do intervalo é ajustado }
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/DashboardSummary' } } } }
   /api/dashboard/travels:
     get:
       tags: [dashboard]
       summary: Série de Viagens por dia (Fluxo de viagens), consultada por polling
+      description: Um ponto por dia (UTC) dos últimos `days` dias, com zero nos dias sem Viagem.
       parameters:
-        - { name: days, in: query, schema: { type: integer, default: 12 } }
+        - { name: days, in: query, schema: { type: integer, default: 12, minimum: 1, maximum: 90 },
+            description: dias da janela, contando hoje (UTC); fora do intervalo é ajustado }
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/TimePoint' } } } } }
   /api/dashboard/top-links:
@@ -187,13 +201,15 @@ paths:
       tags: [dashboard]
       summary: Ranking dos Links do Usuário com mais Viagens
       parameters:
-        - { name: limit, in: query, schema: { type: integer, default: 5 } }
+        - { name: limit, in: query, schema: { type: integer, default: 5, minimum: 1, maximum: 20 },
+            description: fora do intervalo é ajustado }
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/TopLink' } } } } }
   /api/dashboard/countries:
     get:
       tags: [dashboard]
       summary: Viagens por país (GeoIP, só código do país)
+      description: Até 50 países, do maior para o menor. Viagem sem país não entra.
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/CountryCount' } } } } }
 
@@ -209,7 +225,8 @@ paths:
       tags: [protection]
       summary: Histórico recente de Ameaças bloqueadas
       parameters:
-        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20, minimum: 1, maximum: 100 },
+            description: fora do intervalo é ajustado }
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/BlockedEvent' } } } } }
 
@@ -328,7 +345,12 @@ components:
       properties:
         activeLinks: { type: integer }
         totalTravels: { type: integer }
-        travelsChangePct: { type: number, description: vs. período anterior }
+        travelsChangePct:
+          type: number
+          nullable: true
+          description: |
+            Variação percentual (uma casa) das Viagens dos últimos `days` dias contra os `days`
+            anteriores. `null` quando o período anterior não teve Viagens: não existe percentual.
         blockedThreats: { type: integer }
     TimePoint:
       type: object
@@ -358,6 +380,7 @@ components:
             sem identidade de Usuário.
         byReason:
           type: object
+          description: Uma chave por motivo, inclusive os que estão em zero.
           additionalProperties: { type: integer }
           example: { INVALID_URL: 4, SELF_LOOP: 1, RESERVED_ALIAS: 2, PAUSED: 9, CLOSED: 3 }
     BlockedEvent:

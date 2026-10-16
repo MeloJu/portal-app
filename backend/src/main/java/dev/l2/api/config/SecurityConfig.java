@@ -2,21 +2,27 @@ package dev.l2.api.config;
 
 import dev.l2.api.auth.CookieTokenResolver;
 import dev.l2.api.auth.JwtService;
+import dev.l2.api.ratelimit.RateLimitFilter;
+import dev.l2.api.ratelimit.RateLimiter;
+import dev.l2.api.security.ProtectionService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import tools.jackson.databind.ObjectMapper;
 
 @Configuration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class SecurityConfig {
 
 	@Bean
-	SecurityFilterChain filterChain(HttpSecurity http, CookieTokenResolver tokenResolver, JwtService jwt)
+	SecurityFilterChain filterChain(HttpSecurity http, CookieTokenResolver tokenResolver, JwtService jwt,
+			RateLimiter limiter, ProtectionService protection, AppProperties properties, ObjectMapper json)
 			throws Exception {
 		return http
 				.authorizeHttpRequests(requests -> requests
@@ -31,6 +37,8 @@ public class SecurityConfig {
 						.bearerTokenResolver(tokenResolver)
 						.jwt(token -> token.decoder(jwt::verify))
 						.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+				.addFilterBefore(new RateLimitFilter(limiter, protection, properties.rateLimit(), json),
+						BearerTokenAuthenticationFilter.class)
 				.build();
 	}
 

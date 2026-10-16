@@ -489,10 +489,26 @@ button {
   overflow: visible;
 }
 
+.icon-button.active svg {
+  animation: notification-shake 420ms ease-in-out;
+}
+
+@keyframes notification-shake {
+  0%, 100% { rotate: 0deg; }
+  15%, 45%, 75% { rotate: -12deg; }
+  30%, 60%, 90% { rotate: 12deg; }
+}
+
 .icon-button.active {
   border-color: #765fff;
   color: #fff;
   background: #765fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon-button.active svg {
+    animation: none;
+  }
 }
 
 .theme-button {

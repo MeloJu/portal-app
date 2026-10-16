@@ -62,6 +62,7 @@ export default function Dashboard() {
     sources: AudioScheduledSourceNode[];
   } | null>(null);
   const ambientTimerRef = useRef(0);
+  const copiedTimerRef = useRef(0);
   const [active, setActive] = useState("Visão geral");
   const [url, setUrl] = useState("");
   const [slug, setSlug] = useState("");
@@ -82,6 +83,7 @@ export default function Dashboard() {
   useEffect(() => {
     return () => {
       window.clearTimeout(ambientTimerRef.current);
+      window.clearTimeout(copiedTimerRef.current);
       ambientRef.current?.context.close();
     };
   }, []);
@@ -167,10 +169,18 @@ export default function Dashboard() {
     }, 1400);
   }
 
-  function copyLink(value: string) {
-    navigator.clipboard?.writeText(`https://${value}`);
+  async function copyLink(value: string) {
+    if (!navigator.clipboard) return;
+
+    try {
+      await navigator.clipboard.writeText(`https://${value}`);
+    } catch {
+      return;
+    }
+
+    window.clearTimeout(copiedTimerRef.current);
     setCopied(value);
-    window.setTimeout(() => setCopied(""), 1600);
+    copiedTimerRef.current = window.setTimeout(() => setCopied(""), 1600);
   }
 
   function previewPortal(shortLink: string) {
@@ -352,7 +362,7 @@ export default function Dashboard() {
               <span>Portal aberto com sucesso</span>
               <strong>{created}</strong>
               <button onClick={() => copyLink(created)} type="button">
-                {icons.copy} {copied === created ? "Copiado" : "Copiar"}
+                {copied === created ? icons.check : icons.copy} {copied === created ? "Copiado" : "Copiar"}
               </button>
               <button onClick={() => previewPortal(created)} type="button">
                 Visualizar {icons.arrow}
@@ -433,7 +443,7 @@ export default function Dashboard() {
                   <div className="link-info">
                     <strong>{link.name}</strong>
                     <button onClick={() => copyLink(link.short)} type="button">
-                      {link.short} {icons.copy}
+                      {link.short} {copied === link.short ? icons.check : icons.copy}
                     </button>
                   </div>
                   <div className="click-count">
@@ -513,7 +523,7 @@ export default function Dashboard() {
                     </div>
                     <h2>{portal.name}</h2>
                     <button className="short-link" onClick={() => copyLink(portal.slug)} type="button">
-                      {portal.slug} {icons.copy}
+                      {portal.slug} {copied === portal.slug ? icons.check : icons.copy}
                     </button>
                     <div className="destination-line">
                       <span>DESTINO</span>

@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useRouteLoaderData } from "react-router";
+import { logout, type User } from "../api/auth";
 import lumiGuardian from "../assets/lumi-guardian.png";
 import lumiLogo from "../assets/lumi-logo-v2.png";
 import lumiPortalBackground from "../assets/lumi-portal-bg.png";
@@ -56,6 +57,10 @@ const achievements = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  // Usuário vindo do loader da rota /dashboard (o /api/me); sem ele, mantém o nome do protótipo.
+  const user = useRouteLoaderData("dashboard") as User | undefined;
+  const userName = user?.name ?? "Ana Martins";
+  const initials = userName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]!.toUpperCase()).join("") || "?";
   const ambientRef = useRef<{
     context: AudioContext;
     master: GainNode;
@@ -224,16 +229,18 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="profile">
-            <div className="avatar">AM</div>
+            <div className="avatar">{initials}</div>
             <div>
-              <strong>Ana Martins</strong>
+              <strong>{userName}</strong>
               <span>Plano Explorador</span>
             </div>
             <button
               aria-label="Sair da conta"
               onClick={() => {
-                window.localStorage.removeItem("lumi-session");
-                navigate("/login");
+                // Mesmo se a API falhar, sai da tela: o cookie expira sozinho.
+                void logout()
+                  .catch(() => {})
+                  .finally(() => navigate("/login", { replace: true }));
               }}
               title="Sair"
               type="button"
@@ -717,9 +724,9 @@ export default function Dashboard() {
             </aside>
             <div className="settings-panels">
               <article className="settings-panel">
-                <div className="settings-heading"><div><span>PERFIL DA EXPLORADORA</span><h2>Informações pessoais</h2></div><div className="settings-avatar">AM</div></div>
+                <div className="settings-heading"><div><span>PERFIL DA EXPLORADORA</span><h2>Informações pessoais</h2></div><div className="settings-avatar">{initials}</div></div>
                 <div className="settings-fields">
-                  <label><span>Nome</span><input defaultValue="Ana Martins" /></label>
+                  <label><span>Nome</span><input defaultValue={userName} /></label>
                   <label><span>E-mail</span><input defaultValue="ana@lumi.studio" type="email" /></label>
                   <label><span>Nome da estação</span><input defaultValue="Estação da Ana" /></label>
                   <label><span>Idioma</span><select defaultValue="pt-BR"><option value="pt-BR">Português (Brasil)</option><option value="en">English</option></select></label>

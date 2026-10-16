@@ -11,7 +11,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: { "/tools": "http://localhost:3001" },
+    proxy: {
+      "/tools": "http://localhost:3001",
+      // API Spring (scripts/dev-backend*). Mesma origem: o cookie de sessão funciona sem CORS.
+      "/api": "http://localhost:8080",
+    },
   },
   test: {
     environment: "jsdom",

@@ -2,7 +2,13 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { vi } from "vitest";
+import * as auth from "../api/auth";
 import Dashboard from "./Dashboard";
+
+vi.mock("../api/auth", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../api/auth")>()),
+  logout: vi.fn(),
+}));
 
 function renderDashboard() {
   const router = createMemoryRouter(
@@ -102,11 +108,35 @@ describe("Dashboard", () => {
     expect(button).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("encerra a sessão ao sair", async () => {
-    window.localStorage.setItem("lumi-session", "active");
+  it("encerra a sessão na API ao sair", async () => {
+    vi.mocked(auth.logout).mockResolvedValue();
     const router = renderDashboard();
     await userEvent.click(screen.getByRole("button", { name: /sair da conta/i }));
-    expect(window.localStorage.getItem("lumi-session")).toBeNull();
-    expect(router.state.location.pathname).toBe("/login");
+    expect(auth.logout).toHaveBeenCalled();
+    await vi.waitFor(() => expect(router.state.location.pathname).toBe("/login"));
+  });
+
+  it("sai da tela mesmo se o logout da API falhar", async () => {
+    vi.mocked(auth.logout).mockRejectedValue(new auth.AuthError(0, "NETWORK", "x"));
+    const router = renderDashboard();
+    await userEvent.click(screen.getByRole("button", { name: /sair da conta/i }));
+    await vi.waitFor(() => expect(router.state.location.pathname).toBe("/login"));
+  });
+
+  it("mostra o nome e as iniciais do usuário da sessão", async () => {
+    const router = createMemoryRouter(
+      [
+        {
+          id: "dashboard",
+          path: "/dashboard",
+          loader: () => ({ id: "u1", name: "Bruno Costa", email: "b@lumi.dev" }),
+          Component: Dashboard,
+        },
+      ],
+      { initialEntries: ["/dashboard"] },
+    );
+    render(<RouterProvider router={router} />);
+    expect(await screen.findByText("Bruno Costa")).toBeInTheDocument();
+    expect(screen.getAllByText("BC").length).toBeGreaterThan(0);
   });
 });

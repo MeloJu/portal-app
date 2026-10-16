@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
+import { AuthError, login } from "../../api/auth";
 import lumiLogo from "../../assets/lumi-logo-v2.png";
 import lumiPortalBackground from "../../assets/lumi-portal-bg.png";
 
@@ -11,7 +12,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function signIn(event: FormEvent) {
+  async function signIn(event: FormEvent) {
     event.preventDefault();
     if (!email.trim() || !password.trim()) {
       setError("Preencha seu e-mail e sua senha para embarcar.");
@@ -20,10 +21,19 @@ export default function LoginPage() {
 
     setError("");
     setLoading(true);
-    window.setTimeout(() => {
-      window.localStorage.setItem("lumi-session", "active");
-      navigate("/dashboard");
-    }, 850);
+    try {
+      await login(email.trim(), password);
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setError(
+        err instanceof AuthError && err.isInvalidCredentials
+          ? "E-mail ou senha não conferem. Confira e tente de novo."
+          : err instanceof AuthError
+            ? err.message
+            : "Algo deu errado. Tente novamente.",
+      );
+      setLoading(false);
+    }
   }
 
   return (
@@ -114,7 +124,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="login-demo">Para testar, use qualquer e-mail e senha.</p>
           <div className="login-divider">
             <span>ou continue com</span>
           </div>

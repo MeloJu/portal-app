@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:8080/api/protection/summary
+method: GET
+order: 17000

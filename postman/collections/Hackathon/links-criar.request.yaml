@@ -1,0 +1,13 @@
+$kind: http-request
+url: http://localhost:8080/api/links
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "targetUrl": "example.com/campanha",
+      "alias": "campanha-01",
+      "title": "Campanha",
+      "maxTravels": 10
+    }
+order: 5000

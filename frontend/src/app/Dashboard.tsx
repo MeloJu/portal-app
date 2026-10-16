@@ -292,8 +292,22 @@ export default function Dashboard() {
               onClick={() => setNotificationsActive(!notificationsActive)}
               type="button"
             >
-              <Icon><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" /></Icon>
-              <i />
+              <Icon>
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+                {notificationsActive && (
+                  <>
+                    <g transform="translate(-3 -3)" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth={1.8}>
+                      <path d="M4.5 5.3C2.8 6.9 2 9 2 11.4" />
+                      <path d="M6.7 7.1c-1 1.1-1.5 2.3-1.5 3.7" />
+                    </g>
+                    <g transform="translate(3 -3)" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth={1.8}>
+                      <path d="M19.5 5.3C21.2 6.9 22 9 22 11.4" />
+                      <path d="M17.3 7.1c1 1.1 1.5 2.3 1.5 3.7" />
+                    </g>
+                  </>
+                )}
+                
+              </Icon>
             </button>
           </div>
         </header>

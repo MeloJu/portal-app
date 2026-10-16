@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 class ReservedAliasesTests {
 
     @ParameterizedTest
-    @ValueSource(strings = { "api", "r", "assets", "otlp", "health", "login", "register", "index.html" })
+    @ValueSource(strings = { "api", "r", "assets", "otlp", "health", "login", "register", "index.html", "dashboard", "tools", "healthz" })
     void rejectsEveryReservedAlias(String alias) {
         assertThat(ReservedAliases.isReserved(alias)).isTrue();
         assertThatExceptionOfType(InvalidLinkException.class)
@@ -20,7 +20,7 @@ class ReservedAliasesTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { "API", "Login", "REGISTER", "Index.HTML", "R" })
+    @ValueSource(strings = { "API", "Login", "REGISTER", "Index.HTML", "R", "Dashboard" })
     void ignoresCase(String alias) {
         assertThat(ReservedAliases.isReserved(alias)).isTrue();
     }

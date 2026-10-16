@@ -485,10 +485,14 @@ button {
   background: white;
 }
 
+.icon-button svg{
+  overflow: visible;
+}
+
 .icon-button.active {
-  border-color: #ded8f7;
-  color: #6550c9;
-  background: #fff;
+  border-color: #765fff;
+  color: #fff;
+  background: #765fff;
 }
 
 .theme-button {
@@ -568,17 +572,6 @@ button {
 
 @keyframes sound-wave {
   to { height: 8px; }
-}
-
-.icon-button i {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 6px;
-  height: 6px;
-  border: 2px solid white;
-  border-radius: 50%;
-  background: #765fff;
 }
 
 .creator-card {
@@ -3900,9 +3893,9 @@ html[data-theme="dark"] .ambient-button {
 }
 
 html[data-theme="dark"] .icon-button.active {
-  border-color: #ded8f7;
-  color: #6550c9;
-  background: #fff;
+  border-color: #765fff;
+  color: #fff;
+  background: #765fff;
 }
 
 html[data-theme="dark"] .theme-button {

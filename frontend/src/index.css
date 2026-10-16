@@ -1239,6 +1239,7 @@ button {
   place-items: center;
   border: 2px solid currentColor;
   border-radius: 50%;
+  animation: portal-spin 8s linear infinite;
   transform: rotate(-12deg);
 }
 
@@ -1291,12 +1292,20 @@ button {
 
 .cyan-portal {
   color: #28c4b0;
+  animation: portal-spin-reverse 12s linear infinite;
   box-shadow: 0 0 18px rgba(40, 196, 176, 0.28);
 }
 
 .blue-portal {
   color: #4b88e5;
+  animation-duration: 16s;
   box-shadow: 0 0 18px rgba(75, 136, 229, 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .destination-ring {
+    animation: none;
+  }
 }
 
 .portal-route {

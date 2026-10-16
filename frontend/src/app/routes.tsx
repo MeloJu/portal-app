@@ -1,25 +1,24 @@
-import { createBrowserRouter, redirect } from "react-router";
+import { createBrowserRouter, redirect, type RouteObject } from "react-router";
+import { currentUser } from "../api/auth";
 import Dashboard from "./Dashboard";
 import LoginPage from "./pages/LoginPage";
 import RedirectPage from "./pages/RedirectPage";
 
-function hasSession() {
-  return window.localStorage.getItem("lumi-session") === "active";
-}
-
-export const router = createBrowserRouter([
+/** A sessão é o cookie da API: quem decide se há usuário logado é o /api/me. */
+export const routes: RouteObject[] = [
   {
     path: "/",
-    loader: () => redirect(hasSession() ? "/dashboard" : "/login"),
+    loader: async () => redirect((await currentUser()) ? "/dashboard" : "/login"),
   },
   {
     path: "/login",
-    loader: () => (hasSession() ? redirect("/dashboard") : null),
+    loader: async () => ((await currentUser()) ? redirect("/dashboard") : null),
     Component: LoginPage,
   },
   {
+    id: "dashboard",
     path: "/dashboard",
-    loader: () => (hasSession() ? null : redirect("/login")),
+    loader: async () => (await currentUser()) ?? redirect("/login"),
     Component: Dashboard,
   },
   {
@@ -30,4 +29,6 @@ export const router = createBrowserRouter([
     path: "*",
     loader: () => redirect("/"),
   },
-]);
+];
+
+export const router = createBrowserRouter(routes);

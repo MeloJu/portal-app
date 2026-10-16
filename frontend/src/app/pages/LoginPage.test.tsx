@@ -1,7 +1,21 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import { vi } from "vitest";
+import * as auth from "../../api/auth";
 import LoginPage from "./LoginPage";
+
+vi.mock("../../api/auth", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../api/auth")>()),
+  login: vi.fn(),
+}));
+const login = vi.mocked(auth.login);
+
+async function fillAndSubmit(email = "ana@lumi.studio", password = "segredo") {
+  await userEvent.type(screen.getByPlaceholderText("voce@estacao.com"), email);
+  await userEvent.type(screen.getByPlaceholderText("Digite sua senha"), password);
+  await userEvent.click(screen.getByRole("button", { name: /entrar na estação/i }));
+}
 
 function renderLogin() {
   const router = createMemoryRouter(
@@ -20,7 +34,7 @@ describe("LoginPage", () => {
     renderLogin();
     await userEvent.click(screen.getByRole("button", { name: /entrar na estação/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/preencha seu e-mail e sua senha/i);
-    expect(window.localStorage.getItem("lumi-session")).toBeNull();
+    expect(login).not.toHaveBeenCalled();
   });
 
   it("alterna a visibilidade da senha", async () => {
@@ -33,12 +47,28 @@ describe("LoginPage", () => {
     expect(password).toHaveAttribute("type", "password");
   });
 
-  it("cria a sessão e navega para o dashboard com credenciais preenchidas", async () => {
+  it("faz login na API e navega para o dashboard", async () => {
+    login.mockResolvedValue({ id: "u1", name: "Ana", email: "ana@lumi.studio" });
     const router = renderLogin();
-    await userEvent.type(screen.getByPlaceholderText("voce@estacao.com"), "ana@lumi.studio");
-    await userEvent.type(screen.getByPlaceholderText("Digite sua senha"), "segredo");
-    await userEvent.click(screen.getByRole("button", { name: /entrar na estação/i }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/dashboard"), { timeout: 3000 });
-    expect(window.localStorage.getItem("lumi-session")).toBe("active");
+    await fillAndSubmit();
+    await waitFor(() => expect(router.state.location.pathname).toBe("/dashboard"));
+    expect(login).toHaveBeenCalledWith("ana@lumi.studio", "segredo");
+    expect(window.localStorage.getItem("lumi-session")).toBeNull();
+  });
+
+  it("avisa quando e-mail ou senha não conferem e continua no login", async () => {
+    login.mockRejectedValue(new auth.AuthError(401, "INVALID_CREDENTIALS", "E-mail ou senha inválidos"));
+    const router = renderLogin();
+    await fillAndSubmit();
+    expect(await screen.findByRole("alert")).toHaveTextContent(/não conferem/i);
+    expect(router.state.location.pathname).toBe("/login");
+    expect(screen.getByRole("button", { name: /entrar na estação/i })).toBeEnabled();
+  });
+
+  it("mostra a mensagem de rede quando a API não responde", async () => {
+    login.mockRejectedValue(new auth.AuthError(0, "NETWORK", "Não foi possível falar com a estação."));
+    renderLogin();
+    await fillAndSubmit();
+    expect(await screen.findByRole("alert")).toHaveTextContent(/não foi possível falar com a estação/i);
   });
 });

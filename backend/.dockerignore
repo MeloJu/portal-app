@@ -1,0 +1,22 @@
+# build dentro da imagem (stage "build")
+target/
+*.class
+
+# stage de build
+mvnw
+mvnw.cmd
+.mvn/
+
+# Nao e codigo da app.
+Dockerfile
+.dockerignore
+docs/
+HELP.md
+.gitignore
+.gitattributes
+
+# Segredos
+.env
+*.env
+!.env.example
+*.log

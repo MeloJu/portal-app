@@ -71,6 +71,20 @@ describe("Dashboard", () => {
     expect(window.localStorage.getItem("lumi-theme")).toBe(theme);
   });
 
+  it("alterna o estado ativo das notificações", async () => {
+    renderDashboard();
+    const button = screen.getByRole("button", { name: "Notificações" });
+
+    expect(button).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(button);
+    expect(button).toHaveClass("active");
+    expect(button).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(button);
+    expect(button).not.toHaveClass("active");
+    expect(button).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("encerra a sessão ao sair", async () => {
     window.localStorage.setItem("lumi-session", "active");
     const router = renderDashboard();

@@ -12,26 +12,35 @@ Monorepo do projeto: frontend React e backend Spring Boot no mesmo repositório.
 ## Como rodar
 
 ```bash
-# 1. variaveis de ambiente (gere o JWT_SECRET com: openssl rand -base64 32)
-cp .env.example .env
+# 1. backend: Postgres + API em :8080 (actuator em :8081)
+./scripts/dev-backend.sh          # Windows sem Git Bash: .\scripts\dev-backend.ps1
 
-# 2. Postgres local
-docker compose up -d db
-
-# 3. backend (API em :8080, actuator em :8081)
-cd backend && ./mvnw spring-boot:run
-
-# 4. frontend (http://localhost:5173)
+# 2. frontend (http://localhost:5173)
 cd frontend && npm install && npm run dev
 
-# 5. tools-api (http://localhost:3001) — o Vite encaminha /tools/* para ele
+# 3. tools-api (http://localhost:3001) — o Vite encaminha /tools/* para ele
 cd tools-api && cp .env.example .env   # preencha VT_API_KEY
 npm install && npm run dev
 ```
 
+O `dev-backend` cria o `.env` a partir do `.env.example` se faltar, gera um `JWT_SECRET`
+se estiver vazio, sobe o Postgres do compose (esperando o healthcheck) e so entao chama o
+`mvnw`. Argumentos extras vao direto para o Maven:
+`./scripts/dev-backend.sh -Dspring-boot.run.profiles=...`.
+
+### Por que o script, e nao `cd backend && ./mvnw spring-boot:run`
+
 O backend le `DB_URL`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET` e `PUBLIC_BASE_URL` do
-ambiente, sem default para os segredos: se o `JWT_SECRET` faltar ou tiver menos de 256
-bits, a app falha ao iniciar de proposito.
+**ambiente do processo**, sem default para os segredos: se o `JWT_SECRET` faltar ou tiver
+menos de 256 bits, a app falha ao iniciar de proposito.
+
+E o Spring Boot **nao le o arquivo `.env`** -- quem le o `.env` sozinho e o
+`docker compose`. Entao `cp .env.example .env` deixa o banco de pe mas nao exporta nada
+para o `mvnw`: o `${DB_URL}` resolve para vazio e o Hikari para com
+`'url' must start with "jdbc"`. Rodar pela IDE so funciona se a run config tiver as
+variaveis, e run config nao e versionada -- o que funciona numa maquina nao funciona na
+outra. O script carrega o `.env` no ambiente antes de subir a app, e e o mesmo caminho em
+qualquer terminal ou IDE (aponte a run config para ele).
 
 ## Imagem do backend
 

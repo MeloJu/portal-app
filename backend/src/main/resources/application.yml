@@ -1,9 +1,3 @@
-# Atras do Ingress o IP do cliente vem no X-Forwarded-For. O RemoteIpValve do Tomcat
-# so aceita o header de proxies em faixa privada, entao getRemoteAddr() ja devolve o IP
-# real sem dar ao cliente como forjar a chave do rate limit (docs/SECURITY.md, secao 11).
-server:
-  forward-headers-strategy: native
-
 spring:
   application:
     name: l2-api
@@ -27,19 +21,14 @@ app:
     ttl: 8h
   session:
     secure-cookie: ${SESSION_COOKIE_SECURE:true}
-  # Balde por IP em memoria. O IP nunca e gravado: vive so como chave do bucket, que o
-  # Caffeine descarta sozinho (docs/SECURITY.md, secao 11).
-  rate-limit:
-    enabled: ${RATE_LIMIT_ENABLED:true}
-    login:
-      capacity: 5
-      window: 1m
-    register:
-      capacity: 10
-      window: 1h
-    travel:
-      capacity: 60
-      window: 1m
+  # GeoLite2-Country.mmdb da MaxMind, fora do Git (backend/docs/GEOIP.md). Vazio = GeoIP desligado.
+  geoip:
+    database-path: ${GEOIP_DB_PATH:}
+
+# Atras do Traefik o IP do visitante vem em X-Forwarded-For; sem isso todo IP seria o do proxy
+# e nenhuma Viagem teria pais (docs/SECURITY.md, secao 11). O IP so e lido em memoria.
+server:
+  forward-headers-strategy: native
 
 # Actuator em porta separada: o Ingress so roteia a 8080 (docs/SECURITY.md, secao 7).
 management:

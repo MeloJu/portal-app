@@ -1,5 +1,6 @@
 package dev.l2.api.travel;
 
+import dev.l2.api.geo.GeoIpService;
 import dev.l2.api.link.Link;
 import dev.l2.api.link.LinkNotFoundException;
 import dev.l2.api.link.LinkRepository;
@@ -31,26 +32,46 @@ public class TravelService {
 
 	private final L2Metrics metrics;
 
+	private final GeoIpService geoIp;
+
 	private final Clock clock;
 
 	@Autowired
 	public TravelService(LinkRepository links, TravelRepository travels, BotDetector bots,
-			ProtectionService protection, L2Metrics metrics) {
-		this(links, travels, bots, protection, metrics, Clock.systemUTC());
+			ProtectionService protection, L2Metrics metrics, GeoIpService geoIp) {
+		this(links, travels, bots, protection, metrics, geoIp, Clock.systemUTC());
 	}
 
 	TravelService(LinkRepository links, TravelRepository travels, BotDetector bots, ProtectionService protection,
 			L2Metrics metrics, Clock clock) {
+		this(links, travels, bots, protection, metrics, GeoIpService.disabled(), clock);
+	}
+
+	TravelService(LinkRepository links, TravelRepository travels, BotDetector bots, ProtectionService protection,
+			L2Metrics metrics, GeoIpService geoIp, Clock clock) {
 		this.links = links;
 		this.travels = travels;
 		this.bots = bots;
 		this.protection = protection;
 		this.metrics = metrics;
+		this.geoIp = geoIp;
 		this.clock = clock;
 	}
 
+	/** Viagem sem pais: quem chama nao tem o IP do visitante. */
 	@Transactional
 	public TravelResponse travel(String code, String userAgent, String referrer) {
+		return travel(code, userAgent, referrer, null);
+	}
+
+	/**
+	 * @param clientIp IP do visitante, so para descobrir o pais. Nao e gravado nem
+	 *                 registrado em log:
+	 *                 o unico dado que sobra e o codigo do pais (docs/SECURITY.md,
+	 *                 secao 11)
+	 */
+	@Transactional
+	public TravelResponse travel(String code, String userAgent, String referrer, String clientIp) {
 		Instant now = this.clock.instant();
 		if (this.links.registerTravel(code, now) == 0) {
 			throw refuse(code, now);
@@ -58,8 +79,9 @@ public class TravelService {
 
 		Link link = this.links.findByCode(code).orElseThrow(LinkNotFoundException::new);
 		boolean bot = this.bots.isBot(userAgent);
+		String country = this.geoIp.countryOf(clientIp).orElse(null);
 		this.travels.save(new Travel(link, truncate(referrer, MAX_REFERRER), truncate(userAgent, MAX_USER_AGENT),
-				null, bot));
+				country, bot));
 		this.metrics.travel(bot);
 
 		return new TravelResponse(link.getTargetUrl(), link.getTitle(), link.getTravelCount());

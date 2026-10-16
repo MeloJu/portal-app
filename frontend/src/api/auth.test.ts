@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AuthError, currentUser, login, logout } from "./auth";
+import { AuthError, currentUser, login, logout, register } from "./auth";
 
 const user = { id: "u1", name: "Ana Martins", email: "ana@lumi.dev" };
 const json = (status: number, body: unknown) =>
@@ -33,6 +33,29 @@ describe("auth", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
     const err = await login("a@b.c", "x").catch((e) => e);
     expect(err).toMatchObject({ status: 0, code: "NETWORK" });
+  });
+
+  it("cadastra com nome, e-mail e senha e devolve o usuário", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json(201, { expiresIn: 28800, user }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(await register("Ana Martins", "ana@lumi.dev", "segredo-grande")).toEqual(user);
+    const [path, init] = fetchMock.mock.calls[0];
+    expect(path).toBe("/api/auth/register");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ name: "Ana Martins", email: "ana@lumi.dev", password: "segredo-grande" });
+  });
+
+  it("cadastro com e-mail repetido vira AuthError 409 com a mensagem da API", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(json(409, { code: "EMAIL_TAKEN", message: "E-mail já cadastrado" })),
+    );
+    await expect(register("Ana", "ana@lumi.dev", "segredo-grande")).rejects.toMatchObject({
+      status: 409,
+      code: "EMAIL_TAKEN",
+      message: "E-mail já cadastrado",
+    });
   });
 
   it("currentUser devolve o usuário da sessão", async () => {

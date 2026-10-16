@@ -2,7 +2,9 @@ package dev.l2.api.web;
 
 import dev.l2.api.auth.EmailAlreadyUsedException;
 import dev.l2.api.auth.InvalidCredentialsException;
+import dev.l2.api.link.AliasAlreadyUsedException;
 import dev.l2.api.link.InvalidLinkException;
+import dev.l2.api.link.LinkNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -10,6 +12,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -38,13 +41,24 @@ public class ApiExceptionHandler {
 		return body(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", exception.getMessage());
 	}
 
-	/**
-	 * Destino ou alias recusado: o code e o proprio motivo (INVALID_URL, SELF_LOOP,
-	 * RESERVED_ALIAS).
-	 */
 	@ExceptionHandler(InvalidLinkException.class)
 	public ResponseEntity<ErrorResponse> onInvalidLink(InvalidLinkException exception) {
 		return body(HttpStatus.BAD_REQUEST, exception.getReason().name(), exception.getMessage());
+	}
+
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ResponseEntity<ErrorResponse> onUnknownParameterValue(MethodArgumentTypeMismatchException exception) {
+		return body(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", exception.getName() + ": valor não reconhecido");
+	}
+
+	@ExceptionHandler(LinkNotFoundException.class)
+	public ResponseEntity<ErrorResponse> onLinkNotFound(LinkNotFoundException exception) {
+		return body(HttpStatus.NOT_FOUND, "LINK_NOT_FOUND", exception.getMessage());
+	}
+
+	@ExceptionHandler(AliasAlreadyUsedException.class)
+	public ResponseEntity<ErrorResponse> onAliasTaken(AliasAlreadyUsedException exception) {
+		return body(HttpStatus.CONFLICT, "ALIAS_TAKEN", exception.getMessage());
 	}
 
 	private static String describe(FieldError error) {

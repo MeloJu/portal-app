@@ -126,6 +126,11 @@ export const icons = {
       <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" strokeWidth="1.8" />
     </Icon>
   ),
+  check: (
+    <Icon size={17}>
+      <path d="m5 12 4 4L19 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+    </Icon>
+  ),
   arrow: (
     <Icon size={17}>
       <path

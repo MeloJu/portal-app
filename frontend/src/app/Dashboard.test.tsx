@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import { vi } from "vitest";
 import Dashboard from "./Dashboard";
 
 function renderDashboard() {
@@ -39,6 +40,22 @@ describe("Dashboard", () => {
     await userEvent.click(screen.getByRole("button", { name: "Pausados" }));
     expect(screen.getAllByRole("article")).toHaveLength(1);
     expect(screen.getByText("Guia de Marca")).toBeInTheDocument();
+  });
+
+  it("copia o link da Nebulosa e mostra o check após copiar", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    renderDashboard();
+    await userEvent.click(within(nav()).getByRole("button", { name: "Meus portais" }));
+
+    const nebulosaLink = screen.getByRole("button", { name: /l2\.to\/nebulosa/i });
+    await userEvent.click(nebulosaLink);
+
+    expect(writeText).toHaveBeenCalledWith("https://l2.to/nebulosa");
+    expect(nebulosaLink.querySelector("path")?.getAttribute("d")).toBe("m5 12 4 4L19 6");
   });
 
   it("cria um portal com o slug personalizado normalizado", async () => {

@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:8080/api/dashboard/countries
+method: GET
+order: 16000

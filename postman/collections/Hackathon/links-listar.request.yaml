@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:8080/api/links?state=ACTIVE&page=0&size=20
+method: GET
+order: 6000

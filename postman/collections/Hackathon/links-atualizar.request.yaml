@@ -1,0 +1,10 @@
+$kind: http-request
+url: http://localhost:8080/api/links/campanha-01
+method: PATCH
+body:
+  type: json
+  content: |-
+    {
+      "paused": true
+    }
+order: 8000

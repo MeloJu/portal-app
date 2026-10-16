@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:8080/api/dashboard/summary?days=12
+method: GET
+order: 13000

@@ -11,27 +11,48 @@ Monorepo do projeto: frontend React e backend Spring Boot no mesmo repositório.
 
 ## Como rodar
 
+Escolha uma rota abaixo para o backend:
+
+### Opção A: Docker (rápido, sem dependências locais)
+
 ```bash
-# 1. variaveis de ambiente (gere o JWT_SECRET com: openssl rand -base64 32)
-cp .env.example .env
+./scripts/dev-backend-docker.sh    # Windows sem Git Bash: .\scripts\dev-backend-docker.ps1
+```
 
-# 2. Postgres local
-docker compose up -d db
+Não precisa de Java instalado — a imagem traz tudo. Leva uns segundos na primeira vez (build).
 
-# 3. backend (API em :8080, actuator em :8081)
-cd backend && ./mvnw spring-boot:run
+### Opção B: Local com Java 21 (mais rápido para dev iterativo)
 
-# 4. frontend (http://localhost:5173)
+Requer [Java 21 instalado](https://www.oracle.com/java/technologies/downloads/#java21).
+
+```bash
+./scripts/dev-backend.sh           # Windows sem Git Bash: .\scripts\dev-backend.ps1
+```
+
+### Frontend e ferramentas (ambas as opções)
+
+```bash
+# Frontend (http://localhost:5173)
 cd frontend && npm install && npm run dev
 
-# 5. tools-api (http://localhost:3001) — o Vite encaminha /tools/* para ele
+# Tools API (http://localhost:3001)
 cd tools-api && cp .env.example .env   # preencha VT_API_KEY
 npm install && npm run dev
 ```
 
-O backend le `DB_URL`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET` e `PUBLIC_BASE_URL` do
-ambiente, sem default para os segredos: se o `JWT_SECRET` faltar ou tiver menos de 256
-bits, a app falha ao iniciar de proposito.
+### Por que dois scripts?
+
+O Spring Boot **não lê o arquivo `.env`** — quem lê é o `docker compose`. Rodando `cd backend && ./mvnw spring-boot:run` 
+direto depois de `cp .env.example .env`, o `${DB_URL}` resolve para vazio e falha com `'url' must start with "jdbc"`. 
+
+Os scripts cuidam de tudo:
+- Criam o `.env` se faltar
+- Geram um `JWT_SECRET` se estiver vazio
+- Carregam as variáveis no ambiente do processo
+- Sobem o Postgres (com healthcheck)
+- Iniciam a API
+
+Aí funciona em qualquer terminal ou IDE (aponte a run config para um dos scripts).
 
 ## Imagem do backend
 

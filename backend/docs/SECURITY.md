@@ -168,6 +168,12 @@ profundidade".
 
 ➡️ **Se o tempo apertar, fica só o (b)** — é o que alimenta o painel.
 
+**Estado:** camada (b) implementada (`dev.l2.api.ratelimit`), com `/r/{code}` dividindo o
+mesmo balde de `/api/travel/{code}` — senão o limite seria contornável trocando de rota. A
+Ameaça `RATE_LIMIT` é gravada uma vez por IP a cada janela, não uma por requisição barrada:
+um flood não pode virar um flood de `insert` em `blocked_events`. A camada (a) no Traefik
+continua pendente no gitops.
+
 ## 12. CORS: nenhum
 
 | Onde | Status |

@@ -31,6 +31,7 @@
 		<springdoc.version>3.1.1</springdoc.version>
 		<jackson-bom.version>3.1.7</jackson-bom.version>
 		<tomcat.version>11.0.27</tomcat.version>
+		<bucket4j.version>8.14.0</bucket4j.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -64,6 +65,15 @@
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-core</artifactId>
+			<version>${bucket4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springdoc</groupId>

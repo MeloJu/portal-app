@@ -33,11 +33,15 @@ public class ProtectionService {
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public BlockedEvent block(BlockedEventReason reason, String code, UUID ownerId) {
 		Link link = (code == null) ? null : this.links.findByCode(code).orElse(null);
-		User owner = (ownerId == null) ? null : this.users.findById(ownerId).orElse(null);
+		User owner = (ownerId != null) ? this.users.findById(ownerId).orElse(null) : ownerOf(link);
 
 		BlockedEvent event = this.events.save(BlockedEvent.of(reason, owner, link, code));
 		this.metrics.threatBlocked(reason);
 		return event;
+	}
+
+	private static User ownerOf(Link link) {
+		return (link != null) ? link.getOwner() : null;
 	}
 
 }

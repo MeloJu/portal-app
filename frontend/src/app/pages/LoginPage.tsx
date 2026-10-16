@@ -1,37 +1,83 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
-import { AuthError, login } from "../../api/auth";
+import { AuthError, login, register } from "../../api/auth";
 import lumiLogo from "../../assets/lumi-logo-v2.png";
 import lumiPortalBackground from "../../assets/lumi-portal-bg.png";
 
+type Mode = "login" | "register";
+
+/** Os mesmos limites da API (Bean Validation do cadastro). */
+const MIN_PASSWORD = 8;
+const MAX_PASSWORD = 72;
+
+const copy: Record<Mode, { eyebrow: string; title: string; text: string; submit: string; loading: string }> = {
+  login: {
+    eyebrow: "BEM-VINDA DE VOLTA",
+    title: "Entre na sua estação",
+    text: "Continue de onde parou e acompanhe seus portais.",
+    submit: "Entrar na estação",
+    loading: "Abrindo estação...",
+  },
+  register: {
+    eyebrow: "NOVA ESTAÇÃO",
+    title: "Crie sua estação",
+    text: "Em segundos você abre seu primeiro portal, e a Lumi cuida de cada viagem.",
+    submit: "Criar minha estação",
+    loading: "Construindo estação...",
+  },
+};
+
+/** Valida antes de chamar a API: as mensagens de validação dela são técnicas e em inglês. */
+function validate(mode: Mode, name: string, email: string, password: string): string {
+  if (mode === "login") {
+    return !email.trim() || !password.trim() ? "Preencha seu e-mail e sua senha para embarcar." : "";
+  }
+  if (!name.trim() || !email.trim() || !password) return "Preencha nome, e-mail e senha para criar sua estação.";
+  if (password.length < MIN_PASSWORD) return `A senha precisa ter pelo menos ${MIN_PASSWORD} caracteres.`;
+  if (password.length > MAX_PASSWORD) return `A senha pode ter no máximo ${MAX_PASSWORD} caracteres.`;
+  return "";
+}
+
+function errorMessage(mode: Mode, err: unknown): string {
+  if (!(err instanceof AuthError)) return "Algo deu errado. Tente novamente.";
+  if (mode === "login" && err.isInvalidCredentials) return "E-mail ou senha não conferem. Confira e tente de novo.";
+  // A validação da API vem em inglês ("email: must be a well-formed email address").
+  if (err.code === "VALIDATION_ERROR") return "Confira os dados: o e-mail precisa ser válido.";
+  return err.message;
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [mode, setMode] = useState<Mode>("login");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const text = copy[mode];
 
-  async function signIn(event: FormEvent) {
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError("");
+  }
+
+  async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      setError("Preencha seu e-mail e sua senha para embarcar.");
+    const problem = validate(mode, name, email, password);
+    if (problem) {
+      setError(problem);
       return;
     }
 
     setError("");
     setLoading(true);
     try {
-      await login(email.trim(), password);
+      if (mode === "register") await register(name.trim(), email.trim(), password);
+      else await login(email.trim(), password);
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      setError(
-        err instanceof AuthError && err.isInvalidCredentials
-          ? "E-mail ou senha não conferem. Confira e tente de novo."
-          : err instanceof AuthError
-            ? err.message
-            : "Algo deu errado. Tente novamente.",
-      );
+      setError(errorMessage(mode, err));
       setLoading(false);
     }
   }
@@ -61,12 +107,35 @@ export default function LoginPage() {
         <div className="login-box">
           <img className="login-logo" src={lumiLogo} alt="Lumi Links" />
           <div className="login-heading">
-            <span>BEM-VINDA DE VOLTA</span>
-            <h2>Entre na sua estação</h2>
-            <p>Continue de onde parou e acompanhe seus portais.</p>
+            <span>{text.eyebrow}</span>
+            <h2>{text.title}</h2>
+            <p>{text.text}</p>
           </div>
 
-          <form className="login-form" onSubmit={signIn}>
+          <form className="login-form" onSubmit={submit}>
+            {mode === "register" && (
+              <label>
+                <span>Nome</span>
+                <div>
+                  <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18">
+                    <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.7" />
+                    <path
+                      d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeWidth="1.7"
+                    />
+                  </svg>
+                  <input
+                    autoComplete="name"
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Como podemos te chamar?"
+                    type="text"
+                    value={name}
+                  />
+                </div>
+              </label>
+            )}
             <label>
               <span>E-mail</span>
               <div>
@@ -96,9 +165,9 @@ export default function LoginPage() {
                   <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
                 </svg>
                 <input
-                  autoComplete="current-password"
+                  autoComplete={mode === "register" ? "new-password" : "current-password"}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Digite sua senha"
+                  placeholder={mode === "register" ? `Pelo menos ${MIN_PASSWORD} caracteres` : "Digite sua senha"}
                   type={showPassword ? "text" : "password"}
                   value={password}
                 />
@@ -107,19 +176,21 @@ export default function LoginPage() {
                 </button>
               </div>
             </label>
-            <div className="login-options">
-              <label>
-                <input type="checkbox" /> <span>Lembrar de mim</span>
-              </label>
-              <button type="button">Esqueci minha senha</button>
-            </div>
+            {mode === "login" && (
+              <div className="login-options">
+                <label>
+                  <input type="checkbox" /> <span>Lembrar de mim</span>
+                </label>
+                <button type="button">Esqueci minha senha</button>
+              </div>
+            )}
             {error && (
               <p className="login-error" role="alert">
                 {error}
               </p>
             )}
             <button className="login-submit" disabled={loading} type="submit">
-              {loading ? "Abrindo estação..." : "Entrar na estação"}
+              {loading ? text.loading : text.submit}
               {!loading && <span>→</span>}
             </button>
           </form>
@@ -136,7 +207,21 @@ export default function LoginPage() {
             </button>
           </div>
           <p className="signup-copy">
-            Ainda não tem uma estação? <button type="button">Criar conta</button>
+            {mode === "login" ? (
+              <>
+                Ainda não tem uma estação?{" "}
+                <button onClick={() => switchMode("register")} type="button">
+                  Criar conta
+                </button>
+              </>
+            ) : (
+              <>
+                Já tem uma estação?{" "}
+                <button onClick={() => switchMode("login")} type="button">
+                  Já tenho conta
+                </button>
+              </>
+            )}
           </p>
         </div>
       </section>

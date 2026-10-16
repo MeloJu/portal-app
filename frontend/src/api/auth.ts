@@ -43,6 +43,12 @@ export async function login(email: string, password: string): Promise<User> {
   return ((await res.json()) as { user: User }).user;
 }
 
+/** Cria a conta e já abre a sessão (a API devolve o cookie, como no login). */
+export async function register(name: string, email: string, password: string): Promise<User> {
+  const res = await request("/api/auth/register", { method: "POST", body: JSON.stringify({ name, email, password }) });
+  return ((await res.json()) as { user: User }).user;
+}
+
 export async function logout(): Promise<void> {
   await request("/api/auth/logout", { method: "POST" });
 }

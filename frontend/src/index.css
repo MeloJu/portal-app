@@ -3159,28 +3159,6 @@ html[data-theme="dark"] .reveal-error {
   gap: 16px;
 }
 
-.cosmic-map {
-  overflow: hidden;
-  min-height: 405px;
-  padding: 22px;
-  border-radius: 20px;
-  color: white;
-  background:
-    radial-gradient(circle at 48% 55%, rgba(98, 58, 211, 0.45), transparent 13rem),
-    radial-gradient(circle at 82% 22%, rgba(32, 195, 196, 0.15), transparent 10rem),
-    #0d0b29;
-  box-shadow: 0 18px 40px rgba(24, 17, 66, 0.16);
-}
-
-.map-heading {
-  position: relative;
-  z-index: 3;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.map-heading span,
 .settings-heading span,
 .preferences-panel > div:first-child > span {
   color: #7ce9da;
@@ -3189,104 +3167,11 @@ html[data-theme="dark"] .reveal-error {
   letter-spacing: 0.13em;
 }
 
-.map-heading h2,
 .settings-heading h2,
 .preferences-panel h2 {
   margin: 4px 0 0;
   font: 600 17px "Space Grotesk", sans-serif;
 }
-
-.map-heading b {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #76e3d4;
-  font-size: 8px;
-}
-
-.map-heading b i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #62dfcd;
-  box-shadow: 0 0 8px #62dfcd;
-}
-
-.map-space {
-  position: relative;
-  height: 326px;
-  margin-top: 4px;
-  background-image: radial-gradient(#fff 0.7px, transparent 0.7px);
-  background-size: 35px 35px;
-  mask-image: radial-gradient(circle, black, transparent 79%);
-}
-
-.map-orbit {
-  position: absolute;
-  inset: 47px 13%;
-  border: 1px solid rgba(125, 107, 229, 0.28);
-  border-radius: 50%;
-  transform: rotate(-10deg);
-}
-
-.map-orbit.orbit-b {
-  inset: 81px 26%;
-  border-color: rgba(73, 218, 207, 0.32);
-  transform: rotate(22deg);
-}
-
-.map-planet {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-}
-
-.planet-main {
-  top: 106px;
-  left: calc(50% - 36px);
-  width: 72px;
-  height: 72px;
-  border: 2px solid #62e5d7;
-  color: white;
-  background: radial-gradient(circle, #7c5cec, #351d92 68%);
-  box-shadow: 0 0 22px #7055dd, 0 0 55px rgba(76, 221, 208, 0.32);
-  font: 600 17px "Space Grotesk", sans-serif;
-}
-
-.planet-one { top: 45px; left: 14%; }
-.planet-two { top: 202px; right: 13%; }
-.planet-three { top: 55px; right: 11%; }
-
-.map-planet:not(.planet-main) i {
-  width: 13px;
-  height: 13px;
-  border: 2px solid #8d72f1;
-  border-radius: 50%;
-  background: #302171;
-  box-shadow: 0 0 13px #8568ec;
-}
-
-.map-planet small {
-  position: absolute;
-  top: 18px;
-  width: max-content;
-  color: #b8b5d3;
-  font-size: 7px;
-}
-
-.travel-streak {
-  position: absolute;
-  height: 1px;
-  transform-origin: left;
-  background: linear-gradient(90deg, transparent, #65e6d7, white);
-  box-shadow: 0 0 6px #65e6d7;
-  animation: travel-pulse 1.5s ease-in-out infinite;
-}
-
-.streak-one { top: 108px; left: 20%; width: 29%; rotate: 21deg; }
-.streak-two { top: 185px; left: 50%; width: 34%; rotate: 28deg; animation-delay: 400ms; }
-.streak-three { top: 112px; left: 51%; width: 32%; rotate: -13deg; animation-delay: 800ms; }
 
 .rank-panel,
 .threat-log,
@@ -3329,39 +3214,6 @@ html[data-theme="dark"] .reveal-error {
     radial-gradient(circle at 80% 20%, rgba(122, 83, 235, 0.38), transparent 19rem),
     #111033;
 }
-
-.shield-score {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
-
-.shield-rings {
-  display: grid;
-  width: 112px;
-  height: 112px;
-  place-items: center;
-  border: 1px solid rgba(95, 233, 218, 0.28);
-  border-radius: 50%;
-  box-shadow: 0 0 28px rgba(79, 219, 205, 0.14), inset 0 0 20px rgba(103, 77, 222, 0.2);
-}
-
-.shield-rings span {
-  display: grid;
-  width: 72px;
-  height: 72px;
-  place-items: center;
-  border: 1px solid #62e3d5;
-  border-radius: 50%;
-  color: #70e8d9;
-  background: rgba(44, 32, 108, 0.75);
-  box-shadow: 0 0 20px rgba(94, 227, 213, 0.35);
-}
-
-.shield-score > div:last-child { display: grid; grid-template-columns: auto auto; align-items: end; }
-.shield-score small { grid-column: 1 / -1; color: #8d91b2; font-size: 7px; letter-spacing: 0.1em; }
-.shield-score strong { font: 600 36px "Space Grotesk", sans-serif; }
-.shield-score b { padding-bottom: 7px; color: #8589a9; font-size: 10px; }
 
 .security-copy {
   max-width: 430px;
@@ -3420,12 +3272,6 @@ html[data-theme="dark"] .reveal-error {
 .security-card > strong { display: block; margin: 4px 0; color: #2c2941; font: 600 23px "Space Grotesk", sans-serif; }
 .security-card > p { margin: 0; color: #9998a7; font-size: 9px; }
 
-.security-bars { display: flex; height: 24px; align-items: flex-end; gap: 4px; margin-top: 14px; }
-.security-bars i { width: 10%; border-radius: 3px 3px 1px 1px; background: #826bdd; }
-.security-bars i:nth-child(1) { height: 30%; }.security-bars i:nth-child(2) { height: 60%; }.security-bars i:nth-child(3) { height: 45%; }
-.security-bars i:nth-child(4) { height: 80%; }.security-bars i:nth-child(5) { height: 48%; }.security-bars i:nth-child(6) { height: 92%; }.security-bars i:nth-child(7) { height: 65%; }
-.verified-line { display: flex; align-items: center; gap: 6px; margin-top: 19px; color: #47a996; font-size: 8px; }
-.verified-line i { width: 6px; height: 6px; border-radius: 50%; background: #48b39e; }
 .security-hero .security-copy:first-child { margin-left: 0; }
 .reason-list { display: grid; gap: 7px; margin: 10px 0 0; padding: 0; list-style: none; }
 .reason-list li { display: flex; justify-content: space-between; gap: 10px; color: #9998a7; font-size: 9px; }
@@ -4146,10 +3992,6 @@ html[data-theme="dark"] .security-icon.violet {
   box-shadow: 0 0 17px rgba(118, 82, 224, 0.2), inset 0 1px rgba(212, 198, 255, 0.12);
 }
 
-html[data-theme="dark"] .verified-line {
-  color: #61dcca;
-}
-
 html[data-theme="dark"] .threat-dot {
   background: #dc776b;
   box-shadow: 0 0 0 4px #3b2025, 0 0 9px rgba(220, 119, 107, 0.25);
@@ -4304,8 +4146,7 @@ html[data-theme="dark"] footer {
     animation-iteration-count: 1 !important;
   }
 
-  .page-content,
-  .travel-streak {
+  .page-content {
     animation: none !important;
   }
 
@@ -4599,20 +4440,11 @@ html[data-theme="dark"] footer {
     grid-template-columns: 1fr;
   }
 
-  .cosmic-map {
-    min-height: 370px;
-    padding-inline: 17px;
-  }
-
   .security-hero {
     align-items: flex-start;
     flex-direction: column;
     gap: 18px;
     padding: 24px;
-  }
-
-  .shield-score {
-    margin-top: 23px;
   }
 
   .security-copy {

@@ -21,9 +21,9 @@ React 19 + Vite + Tailwind v4 + React Router 7. Testes com Vitest + Testing Libr
 
 ## Pendências (próximas etapas)
 
-- Integrar a API do VirusTotal (análise de URLs).
-- Substituir o link externo do Bypass City por um bypass de encurtadores próprio (rota "Fechar portal").
-- Trocar os dados mockados (portais, métricas, login) pela API do backend.
+- Conquistas e Configurações continuam com dados de exemplo: ainda não existem rotas no backend para elas.
+
+Como rodar o front integrado à API e os testes E2E: seção "Rodando integrado e E2E" do [README da raiz](../README.md#rodando-integrado-e-e2e).
 
 ## Docker
 

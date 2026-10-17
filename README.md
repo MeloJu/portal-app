@@ -222,6 +222,56 @@ SESSION_COOKIE_SECURE=false
 
 **Nunca desabilite essa proteção em produção.**
 
+## Rodando integrado e E2E
+
+### Front e back juntos
+
+No desenvolvimento, o front fala com a API pela mesma origem: o Vite (porta `5173`) encaminha
+`/api/*` e `/r/*` para o backend (porta `8080`) e `/tools/*` para a Tools API (porta `3001`).
+Assim o cookie de sessão funciona sem CORS. Em produção, o nginx da imagem do front faz o mesmo
+papel (`API_URL` e `TOOLS_API_URL`, ver `frontend/README.md`).
+
+Para subir tudo:
+
+1. Backend (já sobe o Postgres): `./scripts/dev-backend.sh` ou `./scripts/dev-backend-docker.sh`.
+2. Front: `cd frontend && npm install && npm run dev`.
+3. Tools API, se for usar "Revelar destino": veja [Frontend e ferramentas](#frontend-e-ferramentas).
+
+Confira se o proxy chegou na API: `curl -i http://localhost:5173/api/me` deve responder `401`.
+
+O link curto é `{PUBLIC_BASE_URL}/{code}` e abre a **Travessia**, uma tela do front que mostra o
+destino antes de seguir. Por isso, no `.env` de desenvolvimento, `PUBLIC_BASE_URL` aponta para o
+Vite (`http://localhost:5173`). O `/r/{code}` é outra coisa: um redirect 302 direto do backend,
+para robôs e teste de carga.
+
+Como o backend recusa destino no próprio host, criar um portal para `localhost` dá erro de loop
+(`SELF_LOOP`) no desenvolvimento. Use um domínio externo, como `https://example.com`.
+
+### Testes E2E
+
+Os testes E2E (Playwright, em `frontend/e2e/`) rodam contra a stack real. O `npm run e2e` sobe o
+backend e o Vite do próprio checkout, com rate limit desligado e um `JWT_SECRET` gerado na hora;
+só o banco precisa estar de pé antes:
+
+```bash
+docker compose up -d db
+cd frontend
+npx playwright install chromium   # só na primeira vez
+npm run e2e                        # ou npm run e2e:ui, com a interface do Playwright
+```
+
+As portas `5173`, `8080` e `8081` precisam estar livres: pare o `npm run dev` e o backend antes.
+A primeira subida do backend demora, porque o Maven compila o projeto.
+
+No CI, o job `e2e` do `ci.yml` roda a mesma suíte com o Postgres como serviço. Se ele falhar, os
+traces do Playwright ficam no artefato `playwright-traces` da execução.
+
+### Roteiro manual
+
+Antes de um PR que mexa em sessão, portais, Travessia ou Proteção, siga o
+[roteiro de teste manual](docs/integracao/roteiro-manual.md): dez passos no navegador, do
+cadastro ao portal fechado.
+
 ## Gitflow
 
 O projeto utiliza o seguinte fluxo:

@@ -40,6 +40,12 @@ describe("CreatePortalForm", () => {
     expect(await screen.findByText("lumi.example/meu-link")).toBeInTheDocument();
   });
 
+  it("mostra o host atual como prefixo do alias", () => {
+    render(<CreatePortalForm minOpeningMs={0} />);
+    expect(screen.getByText(`${window.location.host}/`)).toBeInTheDocument();
+    expect(screen.queryByText("l2.to/")).not.toBeInTheDocument();
+  });
+
   it.each([
     ["Promoção de Verão", "promocao-de-verao"],
     ["  --Café!!  ", "cafe"],

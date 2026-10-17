@@ -18,7 +18,7 @@ export default defineConfig({
       cwd: "../backend",
       url: "http://localhost:8081/actuator/health",
       timeout: 180_000,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       env: {
         DB_URL: "jdbc:postgresql://localhost:5432/lumi",
         DB_USER: "lumi",
@@ -32,7 +32,7 @@ export default defineConfig({
     {
       command: "npm run dev",
       url: "http://localhost:5173",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
     },
   ],
 });

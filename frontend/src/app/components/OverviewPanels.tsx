@@ -16,7 +16,7 @@ function formatPct(pct: number) {
 }
 
 /** "2026-10-14" → "14 out". A série vem em dias UTC, então o rótulo não passa pelo fuso local. */
-function dayLabel(date: string) {
+export function dayLabel(date: string) {
   const [, month, day] = date.split("-");
   return `${day} ${months[Number(month) - 1] ?? ""}`;
 }

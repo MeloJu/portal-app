@@ -2,6 +2,8 @@
 dist
 node_modules
 coverage
+test-results
+playwright-report
 package-lock.json
 
 # CSS fica fora do padrão: o Prettier quebraria regras de uma linha em várias (centenas de linhas de diff).

@@ -5,8 +5,10 @@ import lumiGuardian from "../assets/lumi-guardian.png";
 import lumiLogo from "../assets/lumi-logo-v2.png";
 import CreatePortalForm from "./components/CreatePortalForm";
 import PortalsSection from "./components/PortalsSection";
+import { OrbitStation, StatsGrid, TravelFlowPanel } from "./components/OverviewPanels";
 import RevealDestinationPanel from "./components/RevealDestinationPanel";
 import { Icon, icons } from "./icons";
+import { useOverview } from "./useOverview";
 
 const navItems = [
   ["Visão geral", icons.home],
@@ -23,8 +25,6 @@ const recentLinks = [
   { name: "Portfólio 2025", short: "l2.to/ana-design", clicks: "842", color: "cyan", change: "+7%" },
   { name: "Evento Orbit", short: "l2.to/orbit-live", clicks: "396", color: "blue", change: "+24%" },
 ];
-
-const chartBars = [34, 48, 42, 66, 58, 78, 54, 72, 84, 62, 94, 76];
 
 const pageHeadings: Record<string, [string, string]> = {
   "Visão geral": ["CENTRAL DE COMANDO", "Olá, Ana. Pronta para decolar?"],
@@ -49,6 +49,7 @@ const achievements = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const overview = useOverview();
   // Usuário vindo do loader da rota /dashboard (o /api/me); sem ele, mantém o nome do protótipo.
   const user = useRouteLoaderData("dashboard") as User | undefined;
   const userName = user?.name ?? "Ana Martins";
@@ -295,60 +296,10 @@ export default function Dashboard() {
         {active === "Visão geral" && (<>
         <CreatePortalForm />
 
-        <section className="stats-grid">
-          <article className="stat-card">
-            <div className="stat-icon violet">{icons.link}</div>
-            <div>
-              <span>Portais ativos</span>
-              <strong>24</strong>
-              <small><b>+3</b> este mês</small>
-            </div>
-            <div className="mini-stars"><i /><i /><i /></div>
-          </article>
-          <article className="stat-card">
-            <div className="stat-icon cyan">{icons.chart}</div>
-            <div>
-              <span>Viagens realizadas</span>
-              <strong>8.429</strong>
-              <small><b>+18,4%</b> vs. mês passado</small>
-            </div>
-          </article>
-          <article className="stat-card">
-            <div className="stat-icon blue">{icons.shield}</div>
-            <div>
-              <span>Ameaças bloqueadas</span>
-              <strong>137</strong>
-              <small><b>100%</b> dos portais seguros</small>
-            </div>
-          </article>
-        </section>
+        <StatsGrid overview={overview} />
 
         <section className="thematic-grid">
-          <article className="portal-station">
-            <div className="station-heading">
-              <div>
-                <span>ESTAÇÃO L²</span>
-                <h3>Portais em órbita</h3>
-              </div>
-              <b><i /> 3 ativos agora</b>
-            </div>
-            <div className="portal-list">
-              <div className="portal-destination">
-                <div className="destination-ring violet-portal"><i /><span /></div>
-                <div><strong>Nebulosa</strong><span>1.248 viajantes</span></div>
-              </div>
-              <div className="portal-route"><i /><i /><i /></div>
-              <div className="portal-destination">
-                <div className="destination-ring cyan-portal"><i /><span /></div>
-                <div><strong>Orbit Live</strong><span>396 viajantes</span></div>
-              </div>
-              <div className="portal-route"><i /><i /><i /></div>
-              <div className="portal-destination">
-                <div className="destination-ring blue-portal"><i /><span /></div>
-                <div><strong>Ana Design</strong><span>842 viajantes</span></div>
-              </div>
-            </div>
-          </article>
+          <OrbitStation overview={overview} />
         </section>
 
         <section className="content-grid">
@@ -389,28 +340,7 @@ export default function Dashboard() {
             </div>
           </article>
 
-          <article className="panel journey-panel">
-            <div className="panel-heading">
-              <div>
-                <span>ROTAS EM MOVIMENTO</span>
-                <h3>Fluxo de viagens</h3>
-              </div>
-              <button className="period-button" type="button">Últimos 12 dias⌄</button>
-            </div>
-            <div className="chart-meta">
-              <div><strong>2.846</strong><span>viagens no período</span></div>
-              <b>+12,8%</b>
-            </div>
-            <div className="chart">
-              <div className="chart-grid"><i /><i /><i /></div>
-              <div className="bars">
-                {chartBars.map((height, index) => (
-                  <span className={index === 10 ? "highlight" : ""} key={index} style={{ height: `${height}%` }} />
-                ))}
-              </div>
-            </div>
-            <div className="chart-labels"><span>01 Mai</span><span>06 Mai</span><span>12 Mai</span></div>
-          </article>
+          <TravelFlowPanel overview={overview} />
         </section>
         </>)}
 

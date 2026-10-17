@@ -64,6 +64,14 @@ describe("Dashboard", () => {
     expect(nebulosaLink.querySelector("path")?.getAttribute("d")).toBe("m5 12 4 4L19 6");
   });
 
+  it("visualiza o portal pela Travessia em /:code", async () => {
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    renderDashboard();
+    await userEvent.click(screen.getByRole("button", { name: /visualizar portal campanha nebulosa/i }));
+    expect(open).toHaveBeenCalledWith("/nebulosa", "_blank", "noopener,noreferrer");
+    open.mockRestore();
+  });
+
   it("cria um portal com o slug personalizado normalizado", async () => {
     renderDashboard();
     await userEvent.type(screen.getByPlaceholderText(/cole seu link longo/i), "https://exemplo.com/muito/longo");

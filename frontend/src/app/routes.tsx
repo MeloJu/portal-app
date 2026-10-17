@@ -1,8 +1,9 @@
 import { createBrowserRouter, redirect, type RouteObject } from "react-router";
 import { currentUser } from "../api/auth";
+import { travel } from "../api/travel";
 import Dashboard from "./Dashboard";
 import LoginPage from "./pages/LoginPage";
-import RedirectPage from "./pages/RedirectPage";
+import TravelPage from "./pages/TravelPage";
 
 /** A sessão é o cookie da API: quem decide se há usuário logado é o /api/me. */
 export const routes: RouteObject[] = [
@@ -22,8 +23,11 @@ export const routes: RouteObject[] = [
     Component: Dashboard,
   },
   {
-    path: "/r/:slug",
-    Component: RedirectPage,
+    // Travessia pública. A Viagem conta no loader (uma vez por navegação), nunca num useEffect.
+    // /r/{code} é o 302 direto do backend (robôs), não uma tela do front.
+    path: "/:code",
+    loader: ({ params }) => travel(params.code!),
+    Component: TravelPage,
   },
   {
     path: "*",

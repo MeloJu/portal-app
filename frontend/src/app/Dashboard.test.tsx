@@ -3,11 +3,16 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { vi } from "vitest";
 import * as auth from "../api/auth";
+import * as links from "../api/links";
 import Dashboard from "./Dashboard";
 
 vi.mock("../api/auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/auth")>()),
   logout: vi.fn(),
+}));
+vi.mock("../api/links", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../api/links")>()),
+  createLink: vi.fn(),
 }));
 
 function renderDashboard() {
@@ -64,11 +69,23 @@ describe("Dashboard", () => {
     expect(nebulosaLink.querySelector("path")?.getAttribute("d")).toBe("m5 12 4 4L19 6");
   });
 
-  it("cria um portal com o slug personalizado normalizado", async () => {
+  it("cria o portal pela API com o slug personalizado normalizado", async () => {
     renderDashboard();
     await userEvent.type(screen.getByPlaceholderText(/cole seu link longo/i), "https://exemplo.com/muito/longo");
     await userEvent.type(screen.getByPlaceholderText("personalizar"), "Meu Link");
+    vi.mocked(links.createLink).mockResolvedValue({
+      code: "meu-link",
+      shortUrl: "https://l2.to/meu-link",
+      targetUrl: "https://exemplo.com/muito/longo",
+      title: null,
+      state: "ACTIVE",
+      travelCount: 0,
+      expiresAt: null,
+      maxTravels: null,
+      createdAt: "2026-10-16T12:00:00Z",
+    });
     await userEvent.click(screen.getByRole("button", { name: /criar portal/i }));
+    expect(links.createLink).toHaveBeenCalledWith("https://exemplo.com/muito/longo", "meu-link");
     expect(await screen.findByText("l2.to/meu-link", {}, { timeout: 3000 })).toBeInTheDocument();
   });
 

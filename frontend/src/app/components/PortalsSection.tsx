@@ -66,7 +66,7 @@ function PortalList({ state, empty, version }: PortalListProps) {
     <>
       <div className="portal-library">
         {data.items.map((link) => (
-          <PortalCard key={link.code} link={link} />
+          <PortalCard key={link.code} link={link} onChanged={reload} />
         ))}
       </div>
       {error && (

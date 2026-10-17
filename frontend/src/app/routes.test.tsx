@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as auth from "../api/auth";
@@ -23,7 +24,6 @@ function go(path: string) {
 describe("rotas", () => {
   beforeEach(() => {
     currentUser.mockReset();
-    travel.mockReset();
   });
 
   it("sem sessão, a raiz e o dashboard levam ao login", async () => {
@@ -41,20 +41,38 @@ describe("rotas", () => {
     expect((await screen.findAllByText("Ana Martins")).length).toBeGreaterThan(0);
   });
 
-  it("a Travessia em /:code não exige sessão e registra uma Viagem", async () => {
-    travel.mockResolvedValue({ status: "ok", targetUrl: "https://example.com", title: null, travelCount: 1 });
-    const router = go("/abc123");
-    expect(await screen.findByRole("link", { name: /sim, prosseguir/i })).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe("/abc123");
-    expect(travel).toHaveBeenCalledTimes(1);
-    expect(travel).toHaveBeenCalledWith("abc123");
+  it("a página de redirecionamento não exige sessão", async () => {
+    const router = go("/r/abc123");
+    await vi.waitFor(() => expect(router.state.location.pathname).toBe("/r/abc123"));
     expect(currentUser).not.toHaveBeenCalled();
   });
 
-  it("/r/:slug deixou de ser rota do front", async () => {
+  it("com a API fora do ar mostra a estação desligada e tenta de novo", async () => {
+    currentUser.mockRejectedValueOnce(new auth.AuthError(500, "OFFLINE", "fora do ar"));
+    const router = go("/");
+    expect(await screen.findByRole("heading", { name: /estação está fora do ar/i })).toBeInTheDocument();
+    expect(screen.getByText(/dev-backend/i)).toBeInTheDocument();
+
     currentUser.mockResolvedValue(null);
-    const router = go("/r/abc123");
+    await userEvent.click(screen.getByRole("button", { name: /tentar de novo/i }));
     await vi.waitFor(() => expect(router.state.location.pathname).toBe("/login"));
-    expect(travel).not.toHaveBeenCalled();
+    expect(await screen.findByRole("button", { name: /entrar/i })).toBeInTheDocument();
+  });
+
+  it("vale também para quem abre direto o login ou o dashboard", async () => {
+    currentUser.mockImplementation(async () => {
+      throw new auth.AuthError(0, "NETWORK", "sem rede");
+    });
+    go("/dashboard");
+    expect(await screen.findByRole("heading", { name: /estação está fora do ar/i })).toBeInTheDocument();
+  });
+
+  it("outros erros mostram uma tela genérica, não a do React Router", async () => {
+    currentUser.mockImplementation(async () => {
+      throw new auth.AuthError(500, "INTERNAL_ERROR", "boom");
+    });
+    go("/login");
+    expect(await screen.findByRole("heading", { name: /algo deu errado/i })).toBeInTheDocument();
+    expect(screen.queryByText(/estação está fora do ar/i)).not.toBeInTheDocument();
   });
 });

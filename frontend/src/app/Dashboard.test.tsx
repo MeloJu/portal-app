@@ -3,12 +3,19 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { vi } from "vitest";
 import * as auth from "../api/auth";
+import * as dashboard from "../api/dashboard";
 import Dashboard from "./Dashboard";
 
 vi.mock("../api/auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/auth")>()),
   logout: vi.fn(),
 }));
+vi.mock("../api/dashboard", () => ({ getOverview: vi.fn() }));
+vi.mocked(dashboard.getOverview).mockResolvedValue({
+  summary: { activeLinks: 2, totalTravels: 41, travelsChangePct: 5, blockedThreats: 3 },
+  travels: [{ date: "2026-10-16", travels: 4 }],
+  topLinks: [{ code: "abc123", title: "Campanha Real", travels: 41 }],
+});
 
 function renderDashboard() {
   const router = createMemoryRouter(
@@ -29,6 +36,15 @@ describe("Dashboard", () => {
     renderDashboard();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/pronta para decolar/i);
     expect(screen.getByPlaceholderText(/cole seu link longo/i)).toBeInTheDocument();
+  });
+
+  it("a visão geral mostra os números da API", async () => {
+    renderDashboard();
+    expect(await screen.findByText("Campanha Real")).toBeInTheDocument();
+    const travels = screen.getByText("Viagens realizadas").closest("article")!;
+    expect(within(travels).getByText("41")).toBeInTheDocument();
+    expect(screen.getByText("41 viajantes")).toBeInTheDocument();
+    expect(dashboard.getOverview).toHaveBeenCalledWith(12);
   });
 
   it("troca de seção pela navegação lateral", async () => {

@@ -1,4 +1,6 @@
 /** Links do Usuário logado (backend Spring). A sessão vai no cookie, como em auth.ts. */
+import { request } from "./client";
+
 export type LinkState = "ACTIVE" | "PAUSED" | "CLOSED";
 
 export type Link = {
@@ -31,17 +33,25 @@ export class LinkError extends Error {
 function friendlyValidation(message: string | undefined): string {
   if (message?.startsWith("alias")) return "O nome personalizado precisa ter de 3 a 32 letras, números ou hífens.";
   if (message?.startsWith("targetUrl")) return "O endereço de destino é longo demais ou está vazio.";
+  if (message?.startsWith("title")) return "O título pode ter até 120 caracteres.";
+  if (message?.startsWith("maxTravels")) return "O limite de viagens precisa ser um número a partir de 1.";
   return "Confira os dados do portal e tente de novo.";
 }
 
-export async function createLink(targetUrl: string, alias: string | null): Promise<Link> {
+export type LinkExtras = { title?: string | null; maxTravels?: number | null };
+
+export async function createLink(
+  targetUrl: string,
+  alias: string | null,
+  { title, maxTravels }: LinkExtras = {},
+): Promise<Link> {
   let res: Response;
   try {
     res = await fetch("/api/links", {
       method: "POST",
       credentials: "same-origin",
       headers: { accept: "application/json", "content-type": "application/json" },
-      body: JSON.stringify({ targetUrl, alias }),
+      body: JSON.stringify({ targetUrl, alias, ...(title ? { title } : {}), ...(maxTravels ? { maxTravels } : {}) }),
     });
   } catch {
     throw new LinkError(0, "NETWORK", "Não foi possível falar com a estação. Verifique sua conexão.");
@@ -57,4 +67,43 @@ export async function createLink(targetUrl: string, alias: string | null): Promi
       ? friendlyValidation(body.message)
       : (body.message ?? "Algo deu errado. Tente novamente.");
   throw new LinkError(res.status, code, message);
+}
+
+export type LinkPage = { items: Link[]; page: number; totalItems: number };
+
+export type LinkStats = {
+  code: string;
+  totalTravels: number;
+  humanTravels: number;
+  botTravels: number;
+  travelsByDay: { date: string; travels: number }[];
+  countries: { country: string; travels: number }[];
+};
+
+export const PAGE_SIZE = 20;
+
+const linkPath = (code: string) => `/api/links/${encodeURIComponent(code)}`;
+
+export function listLinks(state: LinkState | null, page = 0, size = PAGE_SIZE, signal?: AbortSignal) {
+  const params = new URLSearchParams();
+  if (state) params.set("state", state);
+  params.set("page", String(page));
+  params.set("size", String(size));
+  return request<LinkPage>(`/api/links?${params}`, { signal });
+}
+
+export function getLink(code: string, signal?: AbortSignal) {
+  return request<Link>(linkPath(code), { signal });
+}
+
+export function getLinkStats(code: string, days = 12, signal?: AbortSignal) {
+  return request<LinkStats>(`${linkPath(code)}/stats?days=${days}`, { signal });
+}
+
+export function setLinkPaused(code: string, paused: boolean) {
+  return request<Link>(linkPath(code), { method: "PATCH", body: { paused } });
+}
+
+export function closeLink(code: string) {
+  return request<void>(linkPath(code), { method: "DELETE" });
 }

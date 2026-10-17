@@ -38,6 +38,17 @@ describe("createLink", () => {
     });
   });
 
+  it("manda título e limite de viagens quando preenchidos", async () => {
+    reply(201, link);
+    await createLink("exemplo.com", null, { title: "Campanha", maxTravels: 500 });
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]![1]!.body as string)).toEqual({
+      targetUrl: "exemplo.com",
+      alias: null,
+      title: "Campanha",
+      maxTravels: 500,
+    });
+  });
+
   it.each([
     [400, "INVALID_URL", "Só aceitamos endereços http ou https"],
     [400, "SELF_LOOP", "O destino não pode ser um link da Lumi"],

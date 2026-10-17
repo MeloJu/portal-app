@@ -16,7 +16,8 @@
 
 - **No `develop`:** I0.1 a I0.5, I1.1 a I1.3, I1.5, I1.6, I3.1 (primeira parte), I3.2, I3.3, I5.1 e I5.4.
 - **Em branch, aguardando PR:** `feature/i3.1-visao-geral-final` (portais recentes reais, recarga ao criar portal, `api/dashboard.ts` no `request`), `feature/i3.4-viagens` e `feature/i3.5-protecao`. As três saíram do `develop` e não conflitam entre si.
-- **Pendente:** I1.4 (parcial), I2.1, I2.2, I4.1, I4.2, I5.2 e I5.3.
+- **Em branch, aguardando PR (E2E):** `feature/i2.1-playwright-e2e` (infra do Playwright + spec de auth) e `feature/i2.2-e2e-portal` (spec do portal, saída da I2.1). `npm run e2e` → 9 passando.
+- **Pendente:** I1.4 (parcial), I4.1, I4.2, I5.2 e I5.3.
 - **Pendência de segurança (Foco de revisão #1):** o `client.ts` dispara `lumi:unauthorized` no 401, mas **ninguém escuta esse evento**. Falta o listener no `App.tsx` previsto na I1.1 (`router.navigate("/login")` quando o pathname é `/dashboard`). Hoje, sessão expirada com o dashboard aberto não volta para o login.
 
 **Divergências entre o plano e o código:**
@@ -26,6 +27,10 @@
 3. **Visão geral (I3.1):** não existe `OverviewStats` com `refreshKey`. São três componentes em `components/OverviewPanels.tsx` (`StatsGrid`, `OrbitStation`, `TravelFlowPanel`) que recebem os dados de `useOverview.ts`. Esse hook consulta a cada 5 s, de novo quando a aba volta ao foco, e na hora quando o `version` muda (o `Dashboard` incrementa no `onCreated` do `CreatePortalForm`). O top usa `limit=3`. O card "Portais recentes" é o `components/RecentPortals.tsx` (`api.listLinks({ size: 3 })`).
 4. **Meus portais (I3.2):** paginação de 20 por página (I5.4), não `size: 100`.
 5. **Cards sem fonte:** em Viagens e Proteção, os cards removidos (decisão 6) deram lugar a 3 colunas. Em Proteção, o 3º card é a quebra por motivo.
+6. **Título do dashboard fixo (I1.4):** o `h1` da Visão geral ainda é "Olá, Ana…" (`pageHeadings`). Por isso o E2E de cadastro confere o nome no perfil (`.profile`). Correção: `fix/i1.4-titulo-dashboard`, depois do merge da I3.1; em seguida o E2E volta a conferir o `h1`.
+7. **Prefixo do alias (I1.6):** o campo ainda mostra `l2.to/`, e não `{location.host}/`. Correção: `fix/i1.6-prefixo-alias`.
+8. **Rate limit no E2E (I2.1):** `RATE_LIMIT_ENABLED` não existe. A propriedade é `app.rate-limit.enabled`, sem placeholder no `application.yml`; o nome que o Spring aceita do ambiente é `APP_RATELIMIT_ENABLED`. O padrão é 60 por minuto por IP, e não 10 por hora.
+9. **Mensagens de erro (I1.2, I1.5, I2.x):** login, cadastro e Travessia mostram textos próprios do front, e não a `message` da API (decisão 8). Os testes conferem o texto que está no código.
 
 ## 5. Tasks
 
@@ -44,13 +49,13 @@ Cada task numa branch `feature/<id>-<nome>` com PR pra `develop`. O detalhe de c
 - [x] I1.1: guardas de rota via loader + `GET /api/me` (401 → `/login`); sai o `localStorage["lumi-session"]`; 401 no meio do uso volta pro login. **Falta o listener de `lumi:unauthorized` no `App.tsx`** (ver "Estado atual")
 - [x] I1.2: login real (`POST /api/auth/login`), mostrando a mensagem da API em 401 e 429
 - [x] I1.3: modo "Criar conta" na tela de login (`POST /api/auth/register`), tratando 409 e senha com menos de 8 caracteres
-- [ ] I1.4: nome do usuário no dashboard (`user.name`) + "Sair" chamando `POST /api/auth/logout`. Parcial: perfil e logout estão feitos, mas o título "Olá, Ana. Pronta para decolar?" ainda é fixo
+- [ ] I1.4: nome do usuário no dashboard (`user.name`) + "Sair" chamando `POST /api/auth/logout`. Parcial: perfil e logout estão feitos, mas o título "Olá, Ana. Pronta para decolar?" ainda é fixo (`fix/i1.4-titulo-dashboard`)
 - [x] I1.5: Travessia em `/:code` com `GET /api/travel/{code}` **no loader** (num `useEffect`, o StrictMode contaria 2 Viagens); telas de 404, 423, 410 e 429; confere http/https antes do link; sai a rota `/r/:slug` do React
-- [x] I1.6: `CreatePortalForm` (extraído do `Dashboard.tsx`) com `POST /api/links`; erros `INVALID_URL`, `SELF_LOOP`, `RESERVED_ALIAS` e `ALIAS_TAKEN` na tela; copiar usa a `shortUrl`
+- [x] I1.6: `CreatePortalForm` (extraído do `Dashboard.tsx`) com `POST /api/links`; erros `INVALID_URL`, `SELF_LOOP`, `RESERVED_ALIAS` e `ALIAS_TAKEN` na tela; copiar usa a `shortUrl`. Falta o prefixo `{location.host}/` no campo de alias (`fix/i1.6-prefixo-alias`)
 
 **E2E (logo depois do caminho quente)**
 
-- [ ] I2.1: Playwright em `frontend/`: o `webServer` sobe o backend (`RATE_LIMIT_ENABLED=false`, `SESSION_COOKIE_SECURE=false`, `JWT_SECRET` gerado na hora) e o Vite; Postgres via `docker compose up -d db`; helpers `registerViaApi`/`createLinkViaApi`; spec de auth (cadastro, senha errada, sem sessão, sair)
+- [ ] I2.1: Playwright em `frontend/`: o `webServer` sobe o backend (`APP_RATELIMIT_ENABLED=false`, `SESSION_COOKIE_SECURE=false`, `JWT_SECRET` gerado na hora) e o Vite; Postgres via `docker compose up -d db`; helpers `registerViaApi`/`createLinkViaApi`; spec de auth (cadastro, senha errada, sem sessão, sair)
 - [ ] I2.2: spec do portal: criar pela tela → a Travessia mostra o destino; uma visita conta **uma** Viagem; pausado mostra aviso; alias `dashboard` e destino `localhost` recusados
 
 🚩 **Ponto de controle:** o fluxo principal funciona e tem teste. Se o tempo acabar, para aqui.
@@ -84,6 +89,8 @@ Cada task numa branch `feature/<id>-<nome>` com PR pra `develop`. O detalhe de c
 5. **Travessia chama a API no loader, nunca em `useEffect`.** O `<React.StrictMode>` do `main.tsx` roda efeitos duas vezes em dev, e cada `GET /api/travel/{code}` registra uma Viagem.
 6. **Métricas sem fonte no back são removidas, não inventadas.** Exemplos: "Viajantes únicos", "Tempo até o destino", "Índice de proteção", "Tráfego filtrado" e o status "Agendado".
 7. **E2E:** Playwright contra a stack real (Postgres do compose + backend + Vite). Unitários do front continuam no Vitest, com `fetch` mockado via `vi.stubGlobal`. **Não adicionar MSW.**
+8. **Mensagens de erro são do front.** Login, cadastro e Travessia mostram textos próprios, no tom da Lumi, escolhidos pelo `code`/status da API, e não a `message` crua dela. A validação da API vem técnica e em inglês. Exceção: os erros de criação de portal (`INVALID_URL`, `SELF_LOOP`, `RESERVED_ALIAS`, `ALIAS_TAKEN`) mostram a `message` da API.
+9. **O alias é normalizado no front** antes do envio: tira acentos, passa para minúsculas e troca o resto por hífen ("Promoção de Verão" → `promocao-de-verao`). O back continua validando `^[a-zA-Z0-9-]{3,32}$`.
 
 ## Restrições globais
 
@@ -92,9 +99,20 @@ Cada task numa branch `feature/<id>-<nome>` com PR pra `develop`. O detalhe de c
 - Antes de cada commit do front: `cd frontend && npm run typecheck && npm test`. Antes de cada commit do back: `cd backend && ./mvnw -B test -Dtest=<classe>`.
 - Não adicionar dependências além de `@playwright/test` (devDependency do `frontend/`).
 - Textos de UI em português, no tom que o app já usa ("portal", "viagem", "Lumi", "estação").
+- Este documento não é a fonte dos textos de UI que já existem. Quando um passo cita uma mensagem de tela, o teste confere o texto que está no código (componente ou API), não o daqui. Textos citados em task ainda não feita são a proposta de copy.
+- Sem comentários no código (JSDoc, bloco ou linha). Explicação vai no PR ou na mensagem de commit.
 - Nada de segredo no código. O `JWT_SECRET` dos testes E2E é gerado na hora (ver I2.1). O CI já roda gitleaks.
 - Destino só `http`/`https`: antes de renderizar ou redirecionar para um `targetUrl`, o front confere o esquema de novo (SECURITY.md, seção 2).
 - Manter as classes CSS e a marcação existentes ao extrair componentes. A mudança é de dados, não de visual.
+
+## Ambiente local
+
+- Portas fixas: Vite `5173`, API `8080`, actuator `8081`, Postgres `5432`. Dois checkouts (ou worktrees) não sobem a stack ao mesmo tempo.
+- O `docker-compose.yml` fixa `container_name: lumi-db`. Se outro checkout já subiu o banco, o `docker compose up -d db` falha com conflito de nome; reaproveite o `lumi-db` que está de pé (mesmo banco, usuário e senha `lumi`).
+- O `npm run e2e` sempre sobe o backend e o Vite do próprio checkout (`reuseExistingServer: false`). Se as portas 5173/8080/8081 estiverem ocupadas, o Playwright falha logo; pare o dev server antes.
+- No Windows o wrapper do Maven é `.\mvnw.cmd`; o `playwright.config.ts` escolhe pela plataforma.
+- Variáveis do backend: só valem as que o `application.yml` lê por placeholder (`DB_URL`, `DB_USER`, `DB_PASSWORD`, `PUBLIC_BASE_URL`, `JWT_SECRET`, `SESSION_COOKIE_SECURE`, `GEOIP_DB_PATH`). O resto se configura pelo nome relaxado do Spring, ex.: `app.rate-limit.enabled` → `APP_RATELIMIT_ENABLED`.
+- Rate limit padrão (`AppProperties.RateLimit`): 60 requisições por minuto por IP em login, cadastro e Travessia.
 
 ## Foco de revisão (fora do caminho feliz)
 
@@ -121,7 +139,7 @@ Cada task numa branch `feature/<id>-<nome>` com PR pra `develop`. O detalhe de c
 | `frontend/src/app/components/*.tsx` | `CreatePortalForm`, `OverviewPanels`, `RecentPortals`, `PortalsSection`, `PortalCard`, `PortalDetail`, `TravelsSection`, `ProtectionSection` |
 | `frontend/src/app/useOverview.ts` | dados da Visão geral, consultados a cada 5 s ou na hora quando muda o `version` |
 | `frontend/src/app/Dashboard.tsx` | perde os mocks e passa a compor as seções |
-| `frontend/playwright.config.ts`, `frontend/e2e/*.spec.ts` (novos) | E2E |
+| `frontend/playwright.config.ts`, `frontend/e2e/*.ts` | E2E (`helpers.ts`, `auth.spec.ts`, `portal.spec.ts`) |
 | `docs/integracao/roteiro-manual.md` (novo) | roteiro de teste manual |
 | `README.md` | seção "Rodando integrado e E2E" |
 
@@ -360,7 +378,7 @@ export function relativeTime(iso: string, now?: Date): string; // "Há 12 min", 
 
 ### I2.1: Infra de testes E2E com Playwright + spec de auth
 
-**Arquivos:** criar `frontend/playwright.config.ts`, `frontend/e2e/helpers.ts` e `frontend/e2e/auth.spec.ts`. Modificar `frontend/package.json`, `frontend/tsconfig.json` e `.gitignore` (raiz ou `frontend/`).
+**Arquivos:** criar `frontend/playwright.config.ts`, `frontend/e2e/helpers.ts` e `frontend/e2e/auth.spec.ts`. Modificar `frontend/package.json`, `frontend/tsconfig.json`, `frontend/.prettierignore` e `.gitignore` da raiz.
 
 **Interfaces (produz):**
 ```ts
@@ -372,14 +390,15 @@ export async function createLinkViaApi(page: Page, input: { targetUrl: string; a
 
 - [ ] **Passo 1:** `cd frontend && npm i -D @playwright/test && npx playwright install chromium`
 - [ ] **Passo 2:** `playwright.config.ts`: `testDir: "e2e"`, `use.baseURL: "http://localhost:5173"`, `workers: 1`, `retries: 0`, `trace: "retain-on-failure"`, projeto só `chromium`. `webServer` é um array de dois itens:
-  - backend: `command: "./mvnw -q spring-boot:run"`, `cwd: "../backend"`, `url: "http://localhost:8081/actuator/health"`, `timeout: 180_000`, `reuseExistingServer: !process.env.CI`, `env` com `DB_URL=jdbc:postgresql://localhost:5432/lumi`, `DB_USER=lumi`, `DB_PASSWORD=lumi`, `PUBLIC_BASE_URL=http://localhost:5173`, `SESSION_COOKIE_SECURE=false`, **`RATE_LIMIT_ENABLED=false`** (o cadastro aceita só 10 por hora por IP e os testes criam um usuário cada) e `JWT_SECRET` = `randomBytes(32).toString("base64")` gerado no próprio config.
-  - front: `command: "npm run dev"`, `url: "http://localhost:5173"`, `reuseExistingServer: !process.env.CI`.
-  - Pré-requisito documentado no topo do arquivo: `docker compose up -d db` na raiz.
+  - backend: `command: "<mvnw> -q spring-boot:run"` (`.\mvnw.cmd` no Windows, `./mvnw` nos outros), `cwd: "../backend"`, `url: "http://localhost:8081/actuator/health"`, `timeout: 180_000`, `reuseExistingServer: false`, `env` com `DB_URL=jdbc:postgresql://localhost:5432/lumi`, `DB_USER=lumi`, `DB_PASSWORD=lumi`, `PUBLIC_BASE_URL=http://localhost:5173`, `SESSION_COOKIE_SECURE=false`, **`APP_RATELIMIT_ENABLED=false`** (nome relaxado de `app.rate-limit.enabled`; o cadastro tem rate limit por IP e cada teste cria um usuário) e `JWT_SECRET` = `randomBytes(32).toString("base64")` gerado no próprio config.
+  - front: `command: "npm run dev"`, `url: "http://localhost:5173"`, `reuseExistingServer: false`.
+  - `reuseExistingServer: false` nos dois: com `true`, um dev server de outro checkout seria reaproveitado em silêncio, com rate limit ligado e o código de outra branch.
+  - O pré-requisito (`docker compose up -d db`) fica documentado no README, na I4.1, e não em comentário no config.
   - Motivo do `PUBLIC_BASE_URL` apontar para o Vite: assim o `shortUrl` aponta para onde a Travessia roda no dev.
-- [ ] **Passo 3:** scripts no `package.json`: `"e2e": "playwright test"` e `"e2e:ui": "playwright test --ui"`. No `tsconfig.json`, `include` ganha `"e2e"` e `"playwright.config.ts"`. No `.gitignore`: `frontend/test-results/`, `frontend/playwright-report/`.
+- [ ] **Passo 3:** scripts no `package.json`: `"e2e": "playwright test"` e `"e2e:ui": "playwright test --ui"`. No `tsconfig.json`, `include` ganha `"e2e"` e `"playwright.config.ts"`. No `.gitignore` da raiz: `frontend/test-results/`, `frontend/playwright-report/`. No `frontend/.prettierignore`: `test-results` e `playwright-report` (o Prettier só lê o `.gitignore` de `frontend/`; sem isso o `format:check` falha depois de um `npm run e2e`).
 - [ ] **Passo 4:** `e2e/auth.spec.ts`:
-  - `cadastro pela tela leva ao dashboard com o nome do usuário`: vai a `/login`, clica "Criar conta", preenche nome/e-mail/senha e envia. Espera a URL `/dashboard` e o `h1` contendo "Olá, <nome>".
-  - `login com senha errada mostra erro genérico`: `registerViaApi`, limpa os cookies, tenta logar com senha errada e vê "E-mail ou senha inválidos".
+  - `cadastro pela tela leva ao dashboard com o nome do usuário`: vai a `/login`, clica "Criar conta", preenche nome/e-mail/senha e envia. Espera a URL `/dashboard` e o nome no perfil (`.profile`). Depois da `fix/i1.4-titulo-dashboard`, volta a conferir o `h1` com o primeiro nome.
+  - `login com senha errada mostra erro genérico`: `registerViaApi`, limpa os cookies, tenta logar com senha errada e vê a mensagem de credenciais inválidas da tela (`LoginPage.tsx`, `errorMessage`).
   - `sem sessão, /dashboard manda para /login`.
   - `sair encerra a sessão`: depois de clicar "Sair da conta", visitar `/dashboard` cai em `/login`.
 - [ ] **Passo 5:** `docker compose up -d db && cd frontend && npm run e2e` → 4 passando. A primeira subida do backend demora.
@@ -392,9 +411,9 @@ export async function createLinkViaApi(page: Page, input: { targetUrl: string; a
 - [ ] **Passo 1:** testes:
   - `cria portal pela tela e a Travessia leva ao destino`: `registerViaApi`, cria pelo formulário com `https://example.com/destino` e alias único. A tela mostra o link curto. `page.goto("/" + alias)` mostra "example.com". O link "Sim, prosseguir" tem `href="https://example.com/destino"` (não clicar, para não sair para a internet).
   - `uma visita à Travessia conta uma viagem só` (Foco #2): `createLinkViaApi`, `page.goto("/" + code)`, espera o `h1`. Depois `page.request.get("/api/links/" + code)` deve ter `travelCount === 1`.
-  - `portal pausado mostra aviso`: cria, faz `PATCH { paused: true }` via `page.request`, visita e vê "Esse portal está pausado".
-  - `alias reservado é recusado na tela`: alias `dashboard` mostra "Esse nome de portal é reservado".
-  - `link para o próprio domínio é recusado`: destino `http://localhost:5173/x` mostra a mensagem de `SELF_LOOP`.
+  - `portal pausado mostra aviso`: cria, faz `PATCH { paused: true }` via `page.request`, visita e vê o aviso de pausado da Travessia (`TravelPage.tsx`, `blocked.paused`), sem o link de prosseguir.
+  - `alias reservado é recusado na tela`: alias `dashboard` mostra a `message` de `RESERVED_ALIAS` da API (`ReservedAliases.java`).
+  - `link para o próprio domínio é recusado`: destino `http://localhost:5173/x` mostra a `message` de `SELF_LOOP` da API (`UrlValidator.java`).
 - [ ] **Passo 2:** `npm run e2e` → tudo passando. Se o teste da contagem falhar com 2, a I1.5 está chamando a API fora do loader. Corrigir lá.
 - [ ] **Passo 3:** commit `test(e2e): criação de portal e Travessia`
 
@@ -515,7 +534,8 @@ export async function createLinkViaApi(page: Page, input: { targetUrl: string; a
   - listener de `lumi:unauthorized` no `App.tsx` (I1.1, Foco de revisão #1), com teste;
   - título "Olá, Ana" vindo do `user.name` (I1.4);
   - CSS sem uso depois da I3.4/I3.5: `.cosmic-map`, `.map-*`, `.planet-*`, `.travel-streak`, `.streak-*`, `.shield-score`, `.shield-rings`, `.security-bars`;
-  - unificar `auth.ts`, `links.ts`, `travel.ts` e `dashboard.ts` no `lumi.ts` (opcional).
+  - unificar `auth.ts`, `links.ts`, `travel.ts` e `dashboard.ts` no `lumi.ts` (opcional);
+  - prefixo `{location.host}/` no campo de alias (I1.6), se a `fix/i1.6-prefixo-alias` não tiver entrado antes.
 - [ ] **Passo 4:** commit `docs: roteiro de teste manual e como rodar a integração`
 
 ### I4.2: Verificação final e PR

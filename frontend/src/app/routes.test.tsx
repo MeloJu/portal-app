@@ -19,7 +19,6 @@ function go(path: string) {
 }
 
 describe("rotas", () => {
-  // Com chaves: uma função devolvida pelo beforeEach vira teardown, e o Vitest chamaria o mock depois do teste.
   beforeEach(() => {
     currentUser.mockReset();
   });

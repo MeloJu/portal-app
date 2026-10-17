@@ -69,7 +69,6 @@ describe("auth", () => {
     expect(await currentUser()).toBeNull();
   });
 
-  // O proxy do Vite responde 500 sem corpo quando o backend está desligado; gateways respondem 502/503/504.
   it.each([
     ["sem conexão", "NETWORK", () => Promise.reject(new TypeError("Failed to fetch"))],
     ["500 sem corpo (proxy do Vite)", "OFFLINE", () => Promise.resolve(new Response("", { status: 500 }))],

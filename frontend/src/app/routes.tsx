@@ -8,7 +8,6 @@ import RouteErrorPage from "./pages/RouteErrorPage";
 /** A sessão é o cookie da API: quem decide se há usuário logado é o /api/me. */
 export const routes: RouteObject[] = [
   {
-    // Erro em qualquer loader (o caso comum: backend desligado) cai numa tela da Lumi, não na do React Router.
     ErrorBoundary: RouteErrorPage,
     children: [
       {

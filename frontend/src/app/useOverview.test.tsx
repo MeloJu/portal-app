@@ -12,8 +12,8 @@ const overview = (totalTravels: number): api.Overview => ({
   topLinks: [],
 });
 
-function Probe({ intervalMs }: { intervalMs: number }) {
-  const data = useOverview(intervalMs);
+function Probe({ intervalMs, version = 0 }: { intervalMs: number; version?: number }) {
+  const data = useOverview(intervalMs, 12, version);
   return <p>total: {data ? data.summary.totalTravels : "carregando"}</p>;
 }
 
@@ -70,6 +70,15 @@ describe("useOverview", () => {
     expect(await screen.findByText("total: 7")).toBeInTheDocument();
     act(() => void window.dispatchEvent(new Event("focus")));
     expect(await screen.findByText("total: 10")).toBeInTheDocument();
+    expect(getOverview).toHaveBeenCalledTimes(2);
+  });
+
+  it("consulta na hora quando a versão muda", async () => {
+    getOverview.mockResolvedValueOnce(overview(7)).mockResolvedValue(overview(11));
+    const { rerender } = render(<Probe intervalMs={60_000} />);
+    expect(await screen.findByText("total: 7")).toBeInTheDocument();
+    rerender(<Probe intervalMs={60_000} version={1} />);
+    expect(await screen.findByText("total: 11")).toBeInTheDocument();
     expect(getOverview).toHaveBeenCalledTimes(2);
   });
 

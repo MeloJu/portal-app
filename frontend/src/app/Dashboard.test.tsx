@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 import * as auth from "../api/auth";
 import * as links from "../api/links";
 import * as dashboard from "../api/dashboard";
@@ -35,9 +35,31 @@ function renderDashboard() {
 }
 
 const NO_EXTRAS = { title: null, maxTravels: null };
+const linksPage = (items: unknown[] = []) =>
+  new Response(JSON.stringify({ items, page: 0, totalItems: items.length }), { status: 200 });
+const recentLink = {
+  code: "orbit",
+  shortUrl: "https://lumi.example/orbit",
+  targetUrl: "https://lumi.studio/orbit",
+  title: "Evento Orbit Real",
+  state: "ACTIVE",
+  travelCount: 7,
+  expiresAt: null,
+  maxTravels: null,
+  createdAt: "2026-10-16T12:00:00Z",
+};
 const nav = () => screen.getByRole("navigation", { name: /navegação principal/i });
 
 describe("Dashboard", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(linksPage())),
+    );
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
   it("começa na visão geral", () => {
     renderDashboard();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/pronta para decolar/i);
@@ -51,6 +73,38 @@ describe("Dashboard", () => {
     expect(within(travels).getByText("41")).toBeInTheDocument();
     expect(screen.getByText("41 viajantes")).toBeInTheDocument();
     expect(dashboard.getOverview).toHaveBeenCalledWith(12);
+  });
+
+  it("portais recentes vêm da API, sem mock", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(linksPage([recentLink]))),
+    );
+    renderDashboard();
+    expect(await screen.findByText("Evento Orbit Real")).toBeInTheDocument();
+    expect(screen.getByText(/lumi\.example\/orbit/)).toBeInTheDocument();
+    expect(screen.queryByText(/l2\.to\/nebulosa/)).not.toBeInTheDocument();
+  });
+
+  it("Ver todos dos portais recentes abre Meus portais", async () => {
+    renderDashboard();
+    await userEvent.click(screen.getByRole("button", { name: /ver todos/i }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/seus portais digitais/i);
+  });
+
+  it("criar portal recarrega a visão geral na hora", async () => {
+    renderDashboard();
+    await screen.findByText("Campanha Real");
+    const fetchMock = vi.mocked(fetch);
+    const overviewCalls = vi.mocked(dashboard.getOverview).mock.calls.length;
+    const recentCalls = fetchMock.mock.calls.length;
+    vi.mocked(links.createLink).mockResolvedValue({ ...recentLink, code: "novo", title: null } as never);
+    await userEvent.type(screen.getByPlaceholderText(/cole seu link longo/i), "https://exemplo.com/novo");
+    await userEvent.click(screen.getByRole("button", { name: /criar portal/i }));
+    await vi.waitFor(() => expect(vi.mocked(dashboard.getOverview).mock.calls.length).toBeGreaterThan(overviewCalls), {
+      timeout: 3000,
+    });
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(recentCalls);
   });
 
   it("troca de seção pela navegação lateral", async () => {
@@ -79,13 +133,15 @@ describe("Dashboard", () => {
       page: 0,
       totalItems: 1,
     };
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(page), { status: 200 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(new Response(JSON.stringify(page), { status: 200 }))),
+    );
     renderDashboard();
     await userEvent.click(within(nav()).getByRole("button", { name: "Meus portais" }));
     expect(await screen.findByText("Campanha Nebulosa")).toBeInTheDocument();
     expect(screen.getByText("1.248")).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Agendados" })).not.toBeInTheDocument();
-    vi.unstubAllGlobals();
   });
 
   it("cria um portal com o slug personalizado normalizado", async () => {

@@ -1,14 +1,26 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 import * as auth from "../api/auth";
+import * as links from "../api/links";
+import * as dashboard from "../api/dashboard";
 import Dashboard from "./Dashboard";
 
 vi.mock("../api/auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/auth")>()),
   logout: vi.fn(),
 }));
+vi.mock("../api/links", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../api/links")>()),
+  createLink: vi.fn(),
+}));
+vi.mock("../api/dashboard", () => ({ getOverview: vi.fn() }));
+vi.mocked(dashboard.getOverview).mockResolvedValue({
+  summary: { activeLinks: 2, totalTravels: 41, travelsChangePct: 5, blockedThreats: 3 },
+  travels: [{ date: "2026-10-16", travels: 4 }],
+  topLinks: [{ code: "abc123", title: "Campanha Real", travels: 41 }],
+});
 
 function renderDashboard() {
   const router = createMemoryRouter(
@@ -22,13 +34,84 @@ function renderDashboard() {
   return router;
 }
 
+const NO_EXTRAS = { title: null, maxTravels: null };
+const linksPage = (items: unknown[] = []) =>
+  new Response(JSON.stringify({ items, page: 0, totalItems: items.length }), { status: 200 });
+const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+const protectionSummary = { blockedThreats: 0, verifiedDestinations: 0, byReason: {} };
+const apiResponse = (url: string, items: unknown[] = []) => {
+  if (url.startsWith("/api/protection/summary")) return json(protectionSummary);
+  if (url.startsWith("/api/protection/events")) return json([]);
+  return linksPage(items);
+};
+const recentLink = {
+  code: "orbit",
+  shortUrl: "https://lumi.example/orbit",
+  targetUrl: "https://lumi.studio/orbit",
+  title: "Evento Orbit Real",
+  state: "ACTIVE",
+  travelCount: 7,
+  expiresAt: null,
+  maxTravels: null,
+  createdAt: "2026-10-16T12:00:00Z",
+};
 const nav = () => screen.getByRole("navigation", { name: /navegação principal/i });
 
 describe("Dashboard", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => Promise.resolve(apiResponse(url))),
+    );
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
   it("começa na visão geral", () => {
     renderDashboard();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/pronta para decolar/i);
     expect(screen.getByPlaceholderText(/cole seu link longo/i)).toBeInTheDocument();
+  });
+
+  it("a visão geral mostra os números da API", async () => {
+    renderDashboard();
+    expect(await screen.findByText("Campanha Real")).toBeInTheDocument();
+    const travels = screen.getByText("Viagens realizadas").closest("article")!;
+    expect(within(travels).getByText("41")).toBeInTheDocument();
+    expect(screen.getByText("41 viajantes")).toBeInTheDocument();
+    expect(dashboard.getOverview).toHaveBeenCalledWith(12);
+  });
+
+  it("portais recentes vêm da API, sem mock", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => Promise.resolve(apiResponse(url, [recentLink]))),
+    );
+    renderDashboard();
+    expect(await screen.findByText("Evento Orbit Real")).toBeInTheDocument();
+    expect(screen.getByText(/lumi\.example\/orbit/)).toBeInTheDocument();
+    expect(screen.queryByText(/l2\.to\/nebulosa/)).not.toBeInTheDocument();
+  });
+
+  it("Ver todos dos portais recentes abre Meus portais", async () => {
+    renderDashboard();
+    await userEvent.click(screen.getByRole("button", { name: /ver todos/i }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/seus portais digitais/i);
+  });
+
+  it("criar portal recarrega a visão geral na hora", async () => {
+    renderDashboard();
+    await screen.findByText("Campanha Real");
+    const fetchMock = vi.mocked(fetch);
+    const overviewCalls = vi.mocked(dashboard.getOverview).mock.calls.length;
+    const recentCalls = fetchMock.mock.calls.length;
+    vi.mocked(links.createLink).mockResolvedValue({ ...recentLink, code: "novo", title: null } as never);
+    await userEvent.type(screen.getByPlaceholderText(/cole seu link longo/i), "https://exemplo.com/novo");
+    await userEvent.click(screen.getByRole("button", { name: /criar portal/i }));
+    await vi.waitFor(() => expect(vi.mocked(dashboard.getOverview).mock.calls.length).toBeGreaterThan(overviewCalls), {
+      timeout: 3000,
+    });
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(recentCalls);
   });
 
   it("troca de seção pela navegação lateral", async () => {
@@ -39,44 +122,52 @@ describe("Dashboard", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/merece ser celebrada/i);
   });
 
-  it("filtra os portais por status", async () => {
+  it("Meus portais lista os portais da API", async () => {
+    const page = {
+      items: [
+        {
+          code: "nebulosa",
+          shortUrl: "https://l2.to/nebulosa",
+          targetUrl: "https://lumi.studio/campanha",
+          title: "Campanha Nebulosa",
+          state: "ACTIVE",
+          travelCount: 1248,
+          expiresAt: null,
+          maxTravels: null,
+          createdAt: "2026-10-16T12:00:00Z",
+        },
+      ],
+      page: 0,
+      totalItems: 1,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(new Response(JSON.stringify(page), { status: 200 }))),
+    );
     renderDashboard();
     await userEvent.click(within(nav()).getByRole("button", { name: "Meus portais" }));
-    expect(screen.getAllByRole("article")).toHaveLength(6);
-    await userEvent.click(screen.getByRole("button", { name: "Pausados" }));
-    expect(screen.getAllByRole("article")).toHaveLength(1);
-    expect(screen.getByText("Guia de Marca")).toBeInTheDocument();
-  });
-
-  it("copia o link da Nebulosa e mostra o check após copiar", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText },
-    });
-    renderDashboard();
-    await userEvent.click(within(nav()).getByRole("button", { name: "Meus portais" }));
-
-    const nebulosaLink = screen.getByRole("button", { name: /l2\.to\/nebulosa/i });
-    await userEvent.click(nebulosaLink);
-
-    expect(writeText).toHaveBeenCalledWith("https://l2.to/nebulosa");
-    expect(nebulosaLink.querySelector("path")?.getAttribute("d")).toBe("m5 12 4 4L19 6");
-  });
-
-  it("visualiza o portal pela Travessia em /:code", async () => {
-    const open = vi.spyOn(window, "open").mockReturnValue(null);
-    renderDashboard();
-    await userEvent.click(screen.getByRole("button", { name: /visualizar portal campanha nebulosa/i }));
-    expect(open).toHaveBeenCalledWith("/nebulosa", "_blank", "noopener,noreferrer");
-    open.mockRestore();
+    expect(await screen.findByText("Campanha Nebulosa")).toBeInTheDocument();
+    expect(screen.getByText("1.248")).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Agendados" })).not.toBeInTheDocument();
   });
 
   it("cria um portal com o slug personalizado normalizado", async () => {
     renderDashboard();
     await userEvent.type(screen.getByPlaceholderText(/cole seu link longo/i), "https://exemplo.com/muito/longo");
     await userEvent.type(screen.getByPlaceholderText("personalizar"), "Meu Link");
+    vi.mocked(links.createLink).mockResolvedValue({
+      code: "meu-link",
+      shortUrl: "https://l2.to/meu-link",
+      targetUrl: "https://exemplo.com/muito/longo",
+      title: null,
+      state: "ACTIVE",
+      travelCount: 0,
+      expiresAt: null,
+      maxTravels: null,
+      createdAt: "2026-10-16T12:00:00Z",
+    });
     await userEvent.click(screen.getByRole("button", { name: /criar portal/i }));
+    expect(links.createLink).toHaveBeenCalledWith("https://exemplo.com/muito/longo", "meu-link", NO_EXTRAS);
     expect(await screen.findByText("l2.to/meu-link", {}, { timeout: 3000 })).toBeInTheDocument();
   });
 

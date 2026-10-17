@@ -31,11 +31,12 @@ Imagem em dois estágios: `node:22` faz o build (`npm run build`, que inclui o `
 
 ```bash
 docker build -t lumi-frontend ./frontend
-docker run -p 8080:8080 -e TOOLS_API_URL=http://tools-api:3001 lumi-frontend
+docker run -p 8080:8080 -e TOOLS_API_URL=http://tools-api:3001 -e API_URL=http://backend:8080 lumi-frontend
 ```
 
 - `TOOLS_API_URL`: para onde o nginx repassa `/tools/*` (o mesmo papel do proxy do Vite). Padrão `http://tools-api:3001`, o nome do serviço no Docker/Kubernetes.
-- Rotas do app (`/login`, `/dashboard`, `/r/:slug`) caem no `index.html`; `/assets/*` têm cache permanente (nomes com hash) e o `index.html` vai sem cache.
+- `API_URL`: para onde o nginx repassa `/api/*` e `/r/*` (o backend Spring). Padrão `http://backend:8080`. Com a API na mesma origem do app, o cookie de sessão funciona sem CORS.
+- Rotas do app (`/login`, `/dashboard` e o link curto `/{code}`, que abre a Travessia) caem no `index.html`; `/assets/*` têm cache permanente (nomes com hash) e o `index.html` vai sem cache.
 - `GET /healthz` responde `ok`, para probe do Kubernetes.
 - As imagens estão no Git LFS: rode `git lfs pull` antes do build, senão a imagem leva os ponteiros no lugar dos PNG.
 - Configuração do nginx em `docker/default.conf.template`.

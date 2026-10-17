@@ -4,10 +4,12 @@ import { logout, type User } from "../api/auth";
 import lumiGuardian from "../assets/lumi-guardian.png";
 import lumiLogo from "../assets/lumi-logo-v2.png";
 import CreatePortalForm from "./components/CreatePortalForm";
+import RecentPortals from "./components/RecentPortals";
 import PortalsSection from "./components/PortalsSection";
 import { OrbitStation, StatsGrid, TravelFlowPanel } from "./components/OverviewPanels";
 import ProtectionSection from "./components/ProtectionSection";
 import RevealDestinationPanel from "./components/RevealDestinationPanel";
+import TravelsSection from "./components/TravelsSection";
 import { Icon, icons } from "./icons";
 import { useOverview } from "./useOverview";
 
@@ -20,12 +22,6 @@ const navItems = [
   ["Conquistas", icons.trophy],
   ["Configurações", icons.settings],
 ] as const;
-
-const recentLinks = [
-  { name: "Campanha Nebulosa", short: "l2.to/nebulosa", clicks: "1.248", color: "violet", change: "+18%" },
-  { name: "Portfólio 2025", short: "l2.to/ana-design", clicks: "842", color: "cyan", change: "+7%" },
-  { name: "Evento Orbit", short: "l2.to/orbit-live", clicks: "396", color: "blue", change: "+24%" },
-];
 
 const pageHeadings: Record<string, [string, string]> = {
   "Visão geral": ["CENTRAL DE COMANDO", "Olá, Ana. Pronta para decolar?"],
@@ -50,7 +46,8 @@ const achievements = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const overview = useOverview();
+  const [overviewVersion, setOverviewVersion] = useState(0);
+  const overview = useOverview(5000, 12, overviewVersion);
   // Usuário vindo do loader da rota /dashboard (o /api/me); sem ele, mantém o nome do protótipo.
   const user = useRouteLoaderData("dashboard") as User | undefined;
   const userName = user?.name ?? "Ana Martins";
@@ -61,9 +58,7 @@ export default function Dashboard() {
     sources: AudioScheduledSourceNode[];
   } | null>(null);
   const ambientTimerRef = useRef(0);
-  const copiedTimerRef = useRef(0);
   const [active, setActive] = useState("Visão geral");
-  const [copied, setCopied] = useState("");
   const [notificationsActive, setNotificationsActive] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [autoShield, setAutoShield] = useState(true);
@@ -77,7 +72,6 @@ export default function Dashboard() {
   useEffect(() => {
     return () => {
       window.clearTimeout(ambientTimerRef.current);
-      window.clearTimeout(copiedTimerRef.current);
       ambientRef.current?.context.close();
     };
   }, []);
@@ -147,26 +141,6 @@ export default function Dashboard() {
     master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), context.currentTime);
     master.gain.exponentialRampToValueAtTime(0.018, context.currentTime + 0.8);
     setAmbientOn(true);
-  }
-
-  async function copyLink(value: string) {
-    if (!navigator.clipboard) return;
-
-    try {
-      await navigator.clipboard.writeText(`https://${value}`);
-    } catch {
-      return;
-    }
-
-    window.clearTimeout(copiedTimerRef.current);
-    setCopied(value);
-    copiedTimerRef.current = window.setTimeout(() => setCopied(""), 1600);
-  }
-
-  function previewPortal(shortLink: string) {
-    const slug = shortLink.replace(/^https?:\/\//, "").split("/").filter(Boolean).pop();
-    if (!slug) return;
-    window.open(`/${encodeURIComponent(slug)}`, "_blank", "noopener,noreferrer");
   }
 
   const [pageEyebrow, pageTitle] = pageHeadings[active] ?? pageHeadings["Visão geral"];
@@ -295,7 +269,7 @@ export default function Dashboard() {
         </header>
 
         {active === "Visão geral" && (<>
-        <CreatePortalForm />
+        <CreatePortalForm onCreated={() => setOverviewVersion((version) => version + 1)} />
 
         <StatsGrid overview={overview} />
 
@@ -304,42 +278,7 @@ export default function Dashboard() {
         </section>
 
         <section className="content-grid">
-          <article className="panel links-panel">
-            <div className="panel-heading">
-              <div>
-                <span>PORTAIS RECENTES</span>
-                <h3>Últimos links criados</h3>
-              </div>
-              <button type="button">Ver todos {icons.arrow}</button>
-            </div>
-            <div className="links-list">
-              {recentLinks.map((link) => (
-                <div className="link-row" key={link.short}>
-                  <div className={`link-orb ${link.color}`}><i /></div>
-                  <div className="link-info">
-                    <strong>{link.name}</strong>
-                    <button onClick={() => copyLink(link.short)} type="button">
-                      {link.short} {copied === link.short ? icons.check : icons.copy}
-                    </button>
-                  </div>
-                  <div className="click-count">
-                    <strong>{link.clicks}</strong>
-                    <span>viagens</span>
-                  </div>
-                  <span className="change">{link.change}</span>
-                  <button
-                    className="row-preview"
-                    aria-label={`Visualizar portal ${link.name}`}
-                    onClick={() => previewPortal(link.short)}
-                    title="Visualizar portal"
-                    type="button"
-                  >
-                    {icons.arrow}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </article>
+          <RecentPortals version={overviewVersion} onSeeAll={() => setActive("Meus portais")} />
 
           <TravelFlowPanel overview={overview} />
         </section>
@@ -349,50 +288,7 @@ export default function Dashboard() {
 
         {active === "Revelar destino" && <RevealDestinationPanel />}
 
-        {active === "Viagens" && (
-          <section className="page-content">
-            <div className="journey-summary">
-              <article><span>VIAGENS TOTAIS</span><strong>8.429</strong><b>+18,4% este mês</b></article>
-              <article><span>VIAJANTES ÚNICOS</span><strong>6.174</strong><b>73,2% do total</b></article>
-              <article><span>TEMPO ATÉ O DESTINO</span><strong>0,28s</strong><b>Rota ultrarrápida</b></article>
-              <article><span>PAÍSES ALCANÇADOS</span><strong>24</strong><b>+3 novas órbitas</b></article>
-            </div>
-            <div className="journey-layout">
-              <article className="cosmic-map">
-                <div className="map-heading">
-                  <div><span>TRÁFEGO AO VIVO</span><h2>Viagens pelo universo</h2></div>
-                  <b><i /> 17 agora</b>
-                </div>
-                <div className="map-space">
-                  <div className="map-orbit orbit-a"><i /></div>
-                  <div className="map-orbit orbit-b"><i /></div>
-                  <div className="map-planet planet-main"><span>L²</span></div>
-                  <div className="map-planet planet-one"><i /><small>Brasil</small></div>
-                  <div className="map-planet planet-two"><i /><small>Portugal</small></div>
-                  <div className="map-planet planet-three"><i /><small>Estados Unidos</small></div>
-                  <div className="travel-streak streak-one" />
-                  <div className="travel-streak streak-two" />
-                  <div className="travel-streak streak-three" />
-                </div>
-              </article>
-              <article className="rank-panel">
-                <div className="panel-heading"><div><span>DESTINOS FAVORITOS</span><h3>Rotas mais viajadas</h3></div></div>
-                {[
-                  ["01", "Campanha Nebulosa", "1.248", 88],
-                  ["02", "Portfólio 2025", "842", 66],
-                  ["03", "Newsletter Lunar", "684", 51],
-                  ["04", "Evento Orbit", "396", 34],
-                ].map(([rank, name, trips, width]) => (
-                  <div className="rank-row" key={name}>
-                    <b>{rank}</b>
-                    <div><strong>{name}</strong><i><span style={{ width: `${width}%` }} /></i></div>
-                    <span>{trips}</span>
-                  </div>
-                ))}
-              </article>
-            </div>
-          </section>
-        )}
+        {active === "Viagens" && <TravelsSection />}
 
         {active === "Proteção" && <ProtectionSection />}
 

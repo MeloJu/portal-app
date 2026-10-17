@@ -6,7 +6,7 @@ import { getOverview, type Overview } from "../api/dashboard";
  * consulta; ao voltar para a aba ou para a janela, consulta na hora: quem acabou de atravessar um
  * portal em outra aba vê o número subir sem esperar o próximo ciclo. Uma falha mantém o último dado.
  */
-export function useOverview(intervalMs = 5000, days = 12): Overview | null {
+export function useOverview(intervalMs = 5000, days = 12, version = 0): Overview | null {
   const [data, setData] = useState<Overview | null>(null);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export function useOverview(intervalMs = 5000, days = 12): Overview | null {
       document.removeEventListener("visibilitychange", onReturn);
       window.removeEventListener("focus", onReturn);
     };
-  }, [intervalMs, days]);
+  }, [intervalMs, days, version]);
 
   return data;
 }

@@ -1,4 +1,6 @@
 /** Leitura da Visão geral (backend Spring). A sessão vai no cookie, como em auth.ts. */
+import { request } from "./client";
+
 export type DashboardSummary = {
   activeLinks: number;
   totalTravels: number;
@@ -11,11 +13,7 @@ export type TimePoint = { date: string; travels: number };
 export type TopLink = { code: string; title: string | null; travels: number };
 export type Overview = { summary: DashboardSummary; travels: TimePoint[]; topLinks: TopLink[] };
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(path, { credentials: "same-origin", headers: { accept: "application/json" } });
-  if (!res.ok) throw new Error(`${path} respondeu ${res.status}`);
-  return (await res.json()) as T;
-}
+const get = <T>(path: string) => request<T>(path, { headers: { accept: "application/json" } });
 
 /** Tudo o que a Visão geral mostra, numa ida só. `days` é a janela do gráfico e da variação. */
 export async function getOverview(days: number): Promise<Overview> {

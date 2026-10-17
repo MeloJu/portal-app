@@ -4,6 +4,7 @@ import { logout, type User } from "../api/auth";
 import lumiGuardian from "../assets/lumi-guardian.png";
 import lumiLogo from "../assets/lumi-logo-v2.png";
 import CreatePortalForm from "./components/CreatePortalForm";
+import PortalsSection from "./components/PortalsSection";
 import RevealDestinationPanel from "./components/RevealDestinationPanel";
 import { Icon, icons } from "./icons";
 
@@ -35,15 +36,6 @@ const pageHeadings: Record<string, [string, string]> = {
   Configurações: ["AJUSTES DA ESTAÇÃO", "Seu universo, do seu jeito"],
 };
 
-const portalCards = [
-  { name: "Campanha Nebulosa", slug: "l2.to/nebulosa", destination: "lumi.studio/campanha", trips: "1.248", status: "Ativo", tone: "violet" },
-  { name: "Portfólio 2025", slug: "l2.to/ana-design", destination: "anadesign.com.br", trips: "842", status: "Ativo", tone: "cyan" },
-  { name: "Evento Orbit", slug: "l2.to/orbit-live", destination: "youtube.com/orbit", trips: "396", status: "Agendado", tone: "blue" },
-  { name: "Clube Supernova", slug: "l2.to/supernova", destination: "comunidade.lumi.co", trips: "2.104", status: "Ativo", tone: "pink" },
-  { name: "Guia de Marca", slug: "l2.to/brand-kit", destination: "figma.com/lumi-kit", trips: "219", status: "Pausado", tone: "amber" },
-  { name: "Newsletter Lunar", slug: "l2.to/carta-lunar", destination: "lumi.substack.com", trips: "684", status: "Ativo", tone: "indigo" },
-];
-
 const achievements = [
   { title: "Primeiro portal", description: "Você abriu seu primeiro portal digital.", progress: 100, unlocked: true, detail: "Desbloqueada em 02 Mai", tone: "violet", icon: icons.portal },
   { title: "Primeiro clique", description: "A primeira viagem atravessou um dos seus links.", progress: 100, unlocked: true, detail: "Desbloqueada em 02 Mai", tone: "cyan", icon: icons.link },
@@ -73,7 +65,6 @@ export default function Dashboard() {
   const [notificationsActive, setNotificationsActive] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [autoShield, setAutoShield] = useState(true);
-  const [portalFilter, setPortalFilter] = useState("Todos");
   const [ambientOn, setAmbientOn] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const savedTheme = window.localStorage.getItem("lumi-theme");
@@ -423,56 +414,7 @@ export default function Dashboard() {
         </section>
         </>)}
 
-        {active === "Meus portais" && (
-          <section className="page-content">
-            <div className="page-toolbar">
-              <div className="filter-tabs">
-                {["Todos", "Ativos", "Agendados", "Pausados"].map((filter) => (
-                  <button
-                    className={portalFilter === filter ? "selected" : ""}
-                    key={filter}
-                    onClick={() => setPortalFilter(filter)}
-                    type="button"
-                  >
-                    {filter}
-                  </button>
-                ))}
-              </div>
-              <button className="page-primary" onClick={() => setActive("Visão geral")} type="button">
-                {icons.plus} Novo portal
-              </button>
-            </div>
-            <div className="portal-library">
-              {portalCards
-                .filter((portal) => portalFilter === "Todos" || `${portal.status}s` === portalFilter)
-                .map((portal) => (
-                  <article className="library-card" key={portal.slug}>
-                    <div className={`library-portal ${portal.tone}`}>
-                      <i /><span>{icons.link}</span>
-                    </div>
-                    <div className="library-card-top">
-                      <span className={`portal-status ${portal.status.toLowerCase()}`}><i /> {portal.status}</span>
-                      <button aria-label={`Opções de ${portal.name}`} type="button">•••</button>
-                    </div>
-                    <h2>{portal.name}</h2>
-                    <button className="short-link" onClick={() => copyLink(portal.slug)} type="button">
-                      {portal.slug} {copied === portal.slug ? icons.check : icons.copy}
-                    </button>
-                    <div className="destination-line">
-                      <span>DESTINO</span>
-                      <p>{portal.destination}</p>
-                    </div>
-                    <div className="library-footer">
-                      <div><strong>{portal.trips}</strong><span>viagens</span></div>
-                      <button onClick={() => previewPortal(portal.slug)} type="button">
-                        Visualizar {icons.arrow}
-                      </button>
-                    </div>
-                  </article>
-                ))}
-            </div>
-          </section>
-        )}
+        {active === "Meus portais" && <PortalsSection />}
 
         {active === "Revelar destino" && <RevealDestinationPanel />}
 

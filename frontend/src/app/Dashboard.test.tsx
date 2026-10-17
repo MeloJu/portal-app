@@ -27,6 +27,7 @@ function renderDashboard() {
   return router;
 }
 
+const NO_EXTRAS = { title: null, maxTravels: null };
 const nav = () => screen.getByRole("navigation", { name: /navegação principal/i });
 
 describe("Dashboard", () => {
@@ -44,29 +45,31 @@ describe("Dashboard", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/merece ser celebrada/i);
   });
 
-  it("filtra os portais por status", async () => {
+  it("Meus portais lista os portais da API", async () => {
+    const page = {
+      items: [
+        {
+          code: "nebulosa",
+          shortUrl: "https://l2.to/nebulosa",
+          targetUrl: "https://lumi.studio/campanha",
+          title: "Campanha Nebulosa",
+          state: "ACTIVE",
+          travelCount: 1248,
+          expiresAt: null,
+          maxTravels: null,
+          createdAt: "2026-10-16T12:00:00Z",
+        },
+      ],
+      page: 0,
+      totalItems: 1,
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(page), { status: 200 })));
     renderDashboard();
     await userEvent.click(within(nav()).getByRole("button", { name: "Meus portais" }));
-    expect(screen.getAllByRole("article")).toHaveLength(6);
-    await userEvent.click(screen.getByRole("button", { name: "Pausados" }));
-    expect(screen.getAllByRole("article")).toHaveLength(1);
-    expect(screen.getByText("Guia de Marca")).toBeInTheDocument();
-  });
-
-  it("copia o link da Nebulosa e mostra o check após copiar", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText },
-    });
-    renderDashboard();
-    await userEvent.click(within(nav()).getByRole("button", { name: "Meus portais" }));
-
-    const nebulosaLink = screen.getByRole("button", { name: /l2\.to\/nebulosa/i });
-    await userEvent.click(nebulosaLink);
-
-    expect(writeText).toHaveBeenCalledWith("https://l2.to/nebulosa");
-    expect(nebulosaLink.querySelector("path")?.getAttribute("d")).toBe("m5 12 4 4L19 6");
+    expect(await screen.findByText("Campanha Nebulosa")).toBeInTheDocument();
+    expect(screen.getByText("1.248")).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Agendados" })).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
   });
 
   it("cria o portal pela API com o slug personalizado normalizado", async () => {
@@ -85,7 +88,7 @@ describe("Dashboard", () => {
       createdAt: "2026-10-16T12:00:00Z",
     });
     await userEvent.click(screen.getByRole("button", { name: /criar portal/i }));
-    expect(links.createLink).toHaveBeenCalledWith("https://exemplo.com/muito/longo", "meu-link");
+    expect(links.createLink).toHaveBeenCalledWith("https://exemplo.com/muito/longo", "meu-link", NO_EXTRAS);
     expect(await screen.findByText("l2.to/meu-link", {}, { timeout: 3000 })).toBeInTheDocument();
   });
 

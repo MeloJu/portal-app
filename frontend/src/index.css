@@ -663,7 +663,7 @@ button {
   bottom: 30px;
   left: 32px;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 210px auto;
+  grid-template-columns: minmax(220px, 1fr) 210px auto auto;
   gap: 9px;
   padding: 7px;
   border: 1px solid rgba(141, 108, 255, 0.31);
@@ -5344,6 +5344,57 @@ html[data-theme="dark"] footer {
   }
 }
 
+.link-form-toggle {
+  border: 0;
+  border-radius: 10px;
+  padding: 0 12px;
+  color: #a9a4d6;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.link-form-toggle[aria-expanded="true"] {
+  color: white;
+  background: rgba(123, 89, 255, 0.3);
+}
+
+.link-form-extras {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) 190px;
+  gap: 9px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.link-form-extras label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding-left: 12px;
+  color: #7e85a7;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.creator-card.with-extras .created-link,
+.creator-card.with-extras .create-portal-error {
+  bottom: 135px;
+}
+
+.page-content > .creator-card {
+  margin-bottom: 18px;
+}
+
+.library-copied {
+  position: relative;
+  color: #1c9d86;
+  font-size: 8px;
+  font-weight: 600;
+}
+
 .library-skeleton {
   display: grid;
   align-content: start;
@@ -5465,6 +5516,23 @@ html[data-theme="dark"] .library-skeleton i {
 }
 
 @media (max-width: 760px) {
+  .link-form-extras {
+    grid-template-columns: 1fr;
+  }
+
+  .link-form-toggle {
+    min-height: 30px;
+  }
+
+  .creator-card.with-extras {
+    min-height: 500px;
+  }
+
+  .creator-card.with-extras .created-link,
+  .creator-card.with-extras .create-portal-error {
+    bottom: 280px;
+  }
+
   .page-toolbar {
     flex-wrap: wrap;
     gap: 10px;

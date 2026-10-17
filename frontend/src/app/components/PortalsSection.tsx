@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api, type LinkState } from "../../api/lumi";
 import { useApi } from "../../api/useApi";
 import { icons } from "../icons";
+import CreatePortalForm from "./CreatePortalForm";
 import PortalCard from "./PortalCard";
 
 const PAGE_SIZE = 20;
@@ -16,12 +17,13 @@ const FILTERS: { label: string; state: LinkState | null; empty: string }[] = [
 type PortalListProps = {
   state: LinkState | null;
   empty: string;
+  version: number;
 };
 
-function PortalList({ state, empty }: PortalListProps) {
+function PortalList({ state, empty, version }: PortalListProps) {
   const { data, error, loading, reload } = useApi(
     () => api.listLinks({ state: state ?? undefined, page: 0, size: PAGE_SIZE }),
-    [state],
+    [state, version],
   );
 
   if (!data && loading) {
@@ -79,11 +81,14 @@ function PortalList({ state, empty }: PortalListProps) {
   );
 }
 
-export default function PortalsSection({ onNewPortal }: { onNewPortal?: () => void }) {
+export default function PortalsSection() {
   const [filter, setFilter] = useState(FILTERS[0]!);
+  const [creating, setCreating] = useState(false);
+  const [version, setVersion] = useState(0);
 
   return (
     <section className="page-content">
+      {creating && <CreatePortalForm onCreated={() => setVersion((v) => v + 1)} />}
       <div className="page-toolbar">
         <div className="filter-tabs" role="tablist" aria-label="Filtrar portais">
           {FILTERS.map((option) => (
@@ -99,11 +104,11 @@ export default function PortalsSection({ onNewPortal }: { onNewPortal?: () => vo
             </button>
           ))}
         </div>
-        <button className="page-primary" onClick={onNewPortal} type="button">
+        <button aria-expanded={creating} className="page-primary" onClick={() => setCreating(!creating)} type="button">
           {icons.plus} Novo portal
         </button>
       </div>
-      <PortalList empty={filter.empty} key={filter.label} state={filter.state} />
+      <PortalList empty={filter.empty} key={filter.label} state={filter.state} version={version} />
     </section>
   );
 }

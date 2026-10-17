@@ -46,6 +46,7 @@ export default function RouteErrorPage() {
           onClick={() => void revalidator.revalidate()}
           type="button"
         >
+          {retrying && <span className="route-error-button-spinner" aria-hidden="true" />}
           {retrying ? "Tentando..." : "Tentar de novo"}
         </button>
       </section>

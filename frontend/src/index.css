@@ -5367,6 +5367,7 @@ html[data-theme="dark"] footer {
   height: 52px;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   border: 0;
   border-radius: 12px;
   color: white;
@@ -5374,16 +5375,72 @@ html[data-theme="dark"] footer {
   box-shadow: 0 9px 22px rgba(73, 41, 188, 0.3);
   font-size: 16px;
   font-weight: 600;
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+.route-error-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(73, 41, 188, 0.45);
+  filter: brightness(1.08);
+}
+
+.route-error-button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+  transition-duration: 80ms;
 }
 
 .route-error-button:disabled {
   cursor: wait;
-  opacity: 0.6;
+  opacity: 0.85;
+}
+
+.route-error-button-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: route-error-spin 700ms linear infinite;
 }
 
 .route-error-button:focus-visible {
   outline: 2px solid #69e3d5;
   outline-offset: 3px;
+}
+
+@keyframes route-error-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes route-error-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.route-error-card > * {
+  animation: route-error-arrive 480ms ease-out backwards;
+}
+
+.route-error-card > *:nth-child(2) { animation-delay: 60ms; }
+.route-error-card > *:nth-child(3) { animation-delay: 120ms; }
+.route-error-card > *:nth-child(4) { animation-delay: 180ms; }
+.route-error-card > *:nth-child(5) { animation-delay: 240ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .route-error-button,
+  .route-error-button-spinner,
+  .route-error-card > * {
+    animation: none;
+    transition: none;
+  }
 }
 
 @media (max-width: 560px) {

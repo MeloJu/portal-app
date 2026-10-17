@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { api, type LinkState } from "../../api/lumi";
 import { useApi } from "../../api/useApi";
 import { icons } from "../icons";
 import CreatePortalForm from "./CreatePortalForm";
 import PortalCard from "./PortalCard";
+import PortalDetail from "./PortalDetail";
 
 const PAGE_SIZE = 20;
 
@@ -18,9 +19,10 @@ type PortalListProps = {
   state: LinkState | null;
   empty: string;
   version: number;
+  onOpen: (code: string) => void;
 };
 
-function PortalList({ state, empty, version }: PortalListProps) {
+function PortalList({ state, empty, version, onOpen }: PortalListProps) {
   const { data, error, loading, reload } = useApi(
     () => api.listLinks({ state: state ?? undefined, page: 0, size: PAGE_SIZE }),
     [state, version],
@@ -66,7 +68,7 @@ function PortalList({ state, empty, version }: PortalListProps) {
     <>
       <div className="portal-library">
         {data.items.map((link) => (
-          <PortalCard key={link.code} link={link} onChanged={reload} />
+          <PortalCard key={link.code} link={link} onChanged={reload} onOpen={onOpen} />
         ))}
       </div>
       {error && (
@@ -85,6 +87,8 @@ export default function PortalsSection() {
   const [filter, setFilter] = useState(FILTERS[0]!);
   const [creating, setCreating] = useState(false);
   const [version, setVersion] = useState(0);
+  const [openCode, setOpenCode] = useState<string | null>(null);
+  const closeDetail = useCallback(() => setOpenCode(null), []);
 
   return (
     <section className="page-content">
@@ -108,7 +112,8 @@ export default function PortalsSection() {
           {icons.plus} Novo portal
         </button>
       </div>
-      <PortalList empty={filter.empty} key={filter.label} state={filter.state} version={version} />
+      <PortalList empty={filter.empty} key={filter.label} onOpen={setOpenCode} state={filter.state} version={version} />
+      {openCode && <PortalDetail code={openCode} onClose={closeDetail} />}
     </section>
   );
 }

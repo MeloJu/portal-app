@@ -35,9 +35,10 @@ export function portalName(link: Link) {
 type Props = {
   link: Link;
   onChanged: () => void;
+  onOpen: (code: string) => void;
 };
 
-export default function PortalCard({ link, onChanged }: Props) {
+export default function PortalCard({ link, onChanged, onOpen }: Props) {
   const copiedTimerRef = useRef(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -167,6 +168,9 @@ export default function PortalCard({ link, onChanged }: Props) {
             </strong>
             <span>viagens</span>
           </div>
+          <button onClick={() => onOpen(link.code)} type="button">
+            Visualizar {icons.arrow}
+          </button>
         </div>
       )}
       {error && (

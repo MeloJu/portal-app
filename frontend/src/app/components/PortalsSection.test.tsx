@@ -219,4 +219,35 @@ describe("PortalsSection", () => {
       timeout: 3000,
     });
   });
+
+  it("visualizar abre o detalhe com humanos e robôs", async () => {
+    const stats = {
+      code: "nebulosa",
+      totalTravels: 396,
+      humanTravels: 300,
+      botTravels: 96,
+      travelsByDay: [
+        { date: "2026-10-16", travels: 10 },
+        { date: "2026-10-17", travels: 20 },
+      ],
+      countries: [{ country: "BR", travels: 250 }],
+    };
+    const fetchMock = mockFetch((url) => {
+      if (url.endsWith("/stats?days=12")) return json(stats);
+      if (url === "/api/links/nebulosa") return json(makeLink());
+      return page([makeLink()]);
+    });
+    render(<PortalsSection />);
+    await userEvent.click(await screen.findByRole("button", { name: /visualizar/i }));
+    const dialog = screen.getByRole("dialog");
+    expect(await within(dialog).findByText("humanos")).toBeInTheDocument();
+    expect(within(dialog).getByText("300")).toBeInTheDocument();
+    expect(within(dialog).getByText("96")).toBeInTheDocument();
+    expect(within(dialog).getByRole("img", { name: "76% humanos, 24% robôs" })).toBeInTheDocument();
+    expect(calls(fetchMock)).toEqual(
+      expect.arrayContaining(["GET /api/links/nebulosa", "GET /api/links/nebulosa/stats?days=12"]),
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: "Fechar detalhe" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 });

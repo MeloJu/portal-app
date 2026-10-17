@@ -83,9 +83,16 @@ describe("api/client", () => {
   });
 
   it("tolera resposta de erro sem JSON", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<html>502</html>", { status: 502 })));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<html>413</html>", { status: 413 })));
     const err = (await request("/api/me").catch((e) => e)) as ApiError;
-    expect(err.status).toBe(502);
+    expect(err.status).toBe(413);
     expect(err.code).toBe("UNKNOWN");
+  });
+
+  it("marca como OFFLINE quando o backend está desligado (proxy ou gateway)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 500 })));
+    await expect(request("/api/x")).rejects.toMatchObject({ status: 500, code: "OFFLINE" });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("Bad Gateway", { status: 502 })));
+    await expect(request("/api/x")).rejects.toMatchObject({ status: 502, code: "OFFLINE" });
   });
 });

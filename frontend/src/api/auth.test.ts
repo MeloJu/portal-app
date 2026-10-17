@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthError, currentUser, login, logout, register } from "./auth";
+import { isApiOffline } from "./offline";
 
 const user = { id: "u1", name: "Ana Martins", email: "ana@lumi.dev" };
 const json = (status: number, body: unknown) =>
@@ -63,16 +64,39 @@ describe("auth", () => {
     expect(await currentUser()).toEqual(user);
   });
 
-  it("currentUser devolve null sem sessão ou sem conexão", async () => {
+  it("currentUser devolve null sem sessão", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(401, { code: "UNAUTHORIZED" })));
-    expect(await currentUser()).toBeNull();
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
     expect(await currentUser()).toBeNull();
   });
 
-  it("currentUser repassa outros erros (ex.: 500)", async () => {
+  // O proxy do Vite responde 500 sem corpo quando o backend está desligado; gateways respondem 502/503/504.
+  it.each([
+    ["sem conexão", "NETWORK", () => Promise.reject(new TypeError("Failed to fetch"))],
+    ["500 sem corpo (proxy do Vite)", "OFFLINE", () => Promise.resolve(new Response("", { status: 500 }))],
+    ["502", "OFFLINE", () => Promise.resolve(new Response("Bad Gateway", { status: 502 }))],
+    ["503", "OFFLINE", () => Promise.resolve(json(503, {}))],
+    ["504", "OFFLINE", () => Promise.resolve(new Response("", { status: 504 }))],
+  ])("currentUser avisa que a API está fora do ar: %s", async (_, code, reply) => {
+    vi.stubGlobal("fetch", vi.fn(reply));
+    const err = await currentUser().catch((e) => e);
+    expect(err).toBeInstanceOf(AuthError);
+    expect(err.code).toBe(code);
+    expect(isApiOffline(err)).toBe(true);
+  });
+
+  it("currentUser repassa outros erros (ex.: 500 da própria API)", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(500, { code: "INTERNAL_ERROR" })));
-    await expect(currentUser()).rejects.toMatchObject({ status: 500 });
+    const err = await currentUser().catch((e) => e);
+    expect(err).toMatchObject({ status: 500, code: "INTERNAL_ERROR" });
+    expect(isApiOffline(err)).toBe(false);
+  });
+
+  it("login com a API fora do ar explica o que aconteceu", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 500 })));
+    await expect(login("a@b.c", "x")).rejects.toMatchObject({
+      code: "OFFLINE",
+      message: expect.stringMatching(/fora do ar/i),
+    });
   });
 
   it("logout encerra a sessão na API", async () => {

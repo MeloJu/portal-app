@@ -5185,6 +5185,11 @@ html[data-theme="dark"] footer {
   gap: 9px;
 }
 
+.redirect-actions.single {
+  max-width: 260px;
+  grid-template-columns: 1fr;
+}
+
 .redirect-actions a,
 .redirect-actions button {
   display: flex;

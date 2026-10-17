@@ -1,5 +1,7 @@
 /** Cliente HTTP do backend da Lumi (/api). A sessão vai no cookie lumi_session, nunca lido pelo front. */
 
+import { isOfflineResponse, OFFLINE_MESSAGE } from "./offline";
+
 export const UNAUTHORIZED_EVENT = "lumi:unauthorized";
 
 type ErrorBody = { code?: string; message?: string };
@@ -34,13 +36,16 @@ export async function request<T>(path: string, { body, headers, ...init }: Reque
   }
 
   let data: unknown = undefined;
+  let hasJsonBody = false;
   try {
     data = await res.json();
+    hasJsonBody = true;
   } catch {}
 
   if (res.status === 401) window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT));
 
   if (!res.ok) {
+    if (isOfflineResponse(res.status, hasJsonBody)) throw new ApiError(res.status, "OFFLINE", OFFLINE_MESSAGE);
     const err = (data ?? {}) as ErrorBody;
     throw new ApiError(res.status, err.code ?? "UNKNOWN", err.message ?? "Algo deu errado. Tente novamente.");
   }

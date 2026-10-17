@@ -3,31 +3,38 @@ import { currentUser } from "../api/auth";
 import Dashboard from "./Dashboard";
 import LoginPage from "./pages/LoginPage";
 import RedirectPage from "./pages/RedirectPage";
+import RouteErrorPage from "./pages/RouteErrorPage";
 
 /** A sessão é o cookie da API: quem decide se há usuário logado é o /api/me. */
 export const routes: RouteObject[] = [
   {
-    path: "/",
-    loader: async () => redirect((await currentUser()) ? "/dashboard" : "/login"),
-  },
-  {
-    path: "/login",
-    loader: async () => ((await currentUser()) ? redirect("/dashboard") : null),
-    Component: LoginPage,
-  },
-  {
-    id: "dashboard",
-    path: "/dashboard",
-    loader: async () => (await currentUser()) ?? redirect("/login"),
-    Component: Dashboard,
-  },
-  {
-    path: "/r/:slug",
-    Component: RedirectPage,
-  },
-  {
-    path: "*",
-    loader: () => redirect("/"),
+    // Erro em qualquer loader (o caso comum: backend desligado) cai numa tela da Lumi, não na do React Router.
+    ErrorBoundary: RouteErrorPage,
+    children: [
+      {
+        path: "/",
+        loader: async () => redirect((await currentUser()) ? "/dashboard" : "/login"),
+      },
+      {
+        path: "/login",
+        loader: async () => ((await currentUser()) ? redirect("/dashboard") : null),
+        Component: LoginPage,
+      },
+      {
+        id: "dashboard",
+        path: "/dashboard",
+        loader: async () => (await currentUser()) ?? redirect("/login"),
+        Component: Dashboard,
+      },
+      {
+        path: "/r/:slug",
+        Component: RedirectPage,
+      },
+      {
+        path: "*",
+        loader: () => redirect("/"),
+      },
+    ],
   },
 ];
 

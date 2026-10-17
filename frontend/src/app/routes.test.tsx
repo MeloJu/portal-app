@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as auth from "../api/auth";
@@ -18,7 +19,10 @@ function go(path: string) {
 }
 
 describe("rotas", () => {
-  beforeEach(() => currentUser.mockReset());
+  // Com chaves: uma função devolvida pelo beforeEach vira teardown, e o Vitest chamaria o mock depois do teste.
+  beforeEach(() => {
+    currentUser.mockReset();
+  });
 
   it("sem sessão, a raiz e o dashboard levam ao login", async () => {
     currentUser.mockResolvedValue(null);
@@ -39,5 +43,34 @@ describe("rotas", () => {
     const router = go("/r/abc123");
     await vi.waitFor(() => expect(router.state.location.pathname).toBe("/r/abc123"));
     expect(currentUser).not.toHaveBeenCalled();
+  });
+
+  it("com a API fora do ar mostra a estação desligada e tenta de novo", async () => {
+    currentUser.mockRejectedValueOnce(new auth.AuthError(500, "OFFLINE", "fora do ar"));
+    const router = go("/");
+    expect(await screen.findByRole("heading", { name: /estação está fora do ar/i })).toBeInTheDocument();
+    expect(screen.getByText(/dev-backend/i)).toBeInTheDocument();
+
+    currentUser.mockResolvedValue(null);
+    await userEvent.click(screen.getByRole("button", { name: /tentar de novo/i }));
+    await vi.waitFor(() => expect(router.state.location.pathname).toBe("/login"));
+    expect(await screen.findByRole("button", { name: /entrar/i })).toBeInTheDocument();
+  });
+
+  it("vale também para quem abre direto o login ou o dashboard", async () => {
+    currentUser.mockImplementation(async () => {
+      throw new auth.AuthError(0, "NETWORK", "sem rede");
+    });
+    go("/dashboard");
+    expect(await screen.findByRole("heading", { name: /estação está fora do ar/i })).toBeInTheDocument();
+  });
+
+  it("outros erros mostram uma tela genérica, não a do React Router", async () => {
+    currentUser.mockImplementation(async () => {
+      throw new auth.AuthError(500, "INTERNAL_ERROR", "boom");
+    });
+    go("/login");
+    expect(await screen.findByRole("heading", { name: /algo deu errado/i })).toBeInTheDocument();
+    expect(screen.queryByText(/estação está fora do ar/i)).not.toBeInTheDocument();
   });
 });

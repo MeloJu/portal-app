@@ -69,7 +69,7 @@ describe("Dashboard", () => {
     expect(nebulosaLink.querySelector("path")?.getAttribute("d")).toBe("m5 12 4 4L19 6");
   });
 
-  it("cria o portal pela API com o slug personalizado normalizado", async () => {
+  it("cria um portal com o slug personalizado normalizado", async () => {
     renderDashboard();
     await userEvent.type(screen.getByPlaceholderText(/cole seu link longo/i), "https://exemplo.com/muito/longo");
     await userEvent.type(screen.getByPlaceholderText("personalizar"), "Meu Link");

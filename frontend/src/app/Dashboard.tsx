@@ -191,7 +191,7 @@ export default function Dashboard() {
   function previewPortal(shortLink: string) {
     const slug = shortLink.replace(/^https?:\/\//, "").split("/").filter(Boolean).pop();
     if (!slug) return;
-    window.open(`/r/${encodeURIComponent(slug)}`, "_blank", "noopener,noreferrer");
+    window.open(`/${encodeURIComponent(slug)}`, "_blank", "noopener,noreferrer");
   }
 
   const [pageEyebrow, pageTitle] = pageHeadings[active] ?? pageHeadings["Visão geral"];

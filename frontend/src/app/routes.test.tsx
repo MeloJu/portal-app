@@ -3,13 +3,16 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as auth from "../api/auth";
+import * as api from "../api/travel";
 import { routes } from "./routes";
 
 vi.mock("../api/auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/auth")>()),
   currentUser: vi.fn(),
 }));
+vi.mock("../api/travel", () => ({ travel: vi.fn() }));
 const currentUser = vi.mocked(auth.currentUser);
+const travel = vi.mocked(api.travel);
 const ana = { id: "u1", name: "Ana Martins", email: "ana@lumi.dev" };
 
 function go(path: string) {

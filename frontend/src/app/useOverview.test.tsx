@@ -50,16 +50,27 @@ describe("useOverview", () => {
 
   it("não consulta com a aba escondida e atualiza na hora ao voltar", async () => {
     getOverview.mockResolvedValueOnce(overview(7)).mockResolvedValue(overview(9));
-    render(<Probe intervalMs={60_000} />);
+    render(<Probe intervalMs={20} />);
     expect(await screen.findByText("total: 7")).toBeInTheDocument();
 
     setHidden(true);
     act(() => void document.dispatchEvent(new Event("visibilitychange")));
-    expect(getOverview).toHaveBeenCalledTimes(1);
+    const calls = getOverview.mock.calls.length;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(getOverview.mock.calls.length).toBe(calls);
 
     setHidden(false);
     act(() => void document.dispatchEvent(new Event("visibilitychange")));
     expect(await screen.findByText("total: 9")).toBeInTheDocument();
+  });
+
+  it("consulta na hora quando a janela volta ao foco", async () => {
+    getOverview.mockResolvedValueOnce(overview(7)).mockResolvedValue(overview(10));
+    render(<Probe intervalMs={60_000} />);
+    expect(await screen.findByText("total: 7")).toBeInTheDocument();
+    act(() => void window.dispatchEvent(new Event("focus")));
+    expect(await screen.findByText("total: 10")).toBeInTheDocument();
+    expect(getOverview).toHaveBeenCalledTimes(2);
   });
 
   it("para de consultar ao desmontar", async () => {

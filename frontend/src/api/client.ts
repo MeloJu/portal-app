@@ -36,9 +36,7 @@ export async function request<T>(path: string, { body, headers, ...init }: Reque
   let data: unknown = undefined;
   try {
     data = await res.json();
-  } catch {
-
-  }
+  } catch {}
 
   if (res.status === 401) window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT));
 

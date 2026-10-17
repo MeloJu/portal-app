@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { api, type LinkState } from "../../api/lumi";
+import { api, type Link, type LinkState } from "../../api/lumi";
 import { useApi } from "../../api/useApi";
 import { icons } from "../icons";
 import CreatePortalForm from "./CreatePortalForm";
@@ -22,11 +22,23 @@ type PortalListProps = {
   onOpen: (code: string) => void;
 };
 
-function PortalList({ state, empty, version, onOpen }: PortalListProps) {
-  const { data, error, loading, reload } = useApi(
-    () => api.listLinks({ state: state ?? undefined, page: 0, size: PAGE_SIZE }),
-    [state, version],
+async function loadPages(state: LinkState | null, pages: number) {
+  const results = await Promise.all(
+    Array.from({ length: pages }, (_, page) => api.listLinks({ state: state ?? undefined, page, size: PAGE_SIZE })),
   );
+  const seen = new Set<string>();
+  const items: Link[] = [];
+  for (const item of results.flatMap((result) => result.items)) {
+    if (seen.has(item.code)) continue;
+    seen.add(item.code);
+    items.push(item);
+  }
+  return { items, totalItems: results[results.length - 1]!.totalItems };
+}
+
+function PortalList({ state, empty, version, onOpen }: PortalListProps) {
+  const [pages, setPages] = useState(1);
+  const { data, error, loading, reload } = useApi(() => loadPages(state, pages), [state, pages, version]);
 
   if (!data && loading) {
     return (
@@ -78,6 +90,11 @@ function PortalList({ state, empty, version, onOpen }: PortalListProps) {
             Tentar de novo
           </button>
         </div>
+      )}
+      {data.items.length < data.totalItems && (
+        <button className="portal-load-more" disabled={loading} onClick={() => setPages(pages + 1)} type="button">
+          {loading ? "Carregando..." : "Carregar mais"}
+        </button>
       )}
     </>
   );

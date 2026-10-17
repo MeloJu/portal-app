@@ -12,6 +12,16 @@ type Props = {
   minOpeningMs?: number;
 };
 
+/** "Promoção de Verão" → "promocao-de-verao": tira acentos e junta o resto com um hífen só. */
+function normalizeAlias(typed: string) {
+  return typed
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function displayUrl(shortUrl: string) {
   return shortUrl.replace(/^https?:\/\//, "");
 }
@@ -30,12 +40,8 @@ export default function CreatePortalForm({ minOpeningMs = 1400 }: Props) {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!url.trim() || isOpening) return;
-    const alias =
-      slug
-        .trim()
-        .replace(/[^a-zA-Z0-9-]/g, "-")
-        .toLowerCase() || null;
-    if (alias && !ALIAS_PATTERN.test(alias)) {
+    const alias = normalizeAlias(slug) || null;
+    if (slug.trim() && !ALIAS_PATTERN.test(alias ?? "")) {
       setError("O nome personalizado precisa ter de 3 a 32 letras, números ou hífens.");
       return;
     }

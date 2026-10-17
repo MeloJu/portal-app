@@ -39,6 +39,28 @@ describe("CreatePortalForm", () => {
     expect(await screen.findByText("lumi.example/meu-link")).toBeInTheDocument();
   });
 
+  it.each([
+    ["Promoção de Verão", "promocao-de-verao"],
+    ["  --Café!!  ", "cafe"],
+    ["a  b", "a-b"],
+  ])("normaliza o alias %j para %j", async (typed, alias) => {
+    createLink.mockResolvedValue(link);
+    render(<CreatePortalForm minOpeningMs={0} />);
+    await fill("exemplo.com", typed);
+    expect(createLink).toHaveBeenCalledWith("exemplo.com", alias);
+  });
+
+  it("alias que vira vazio ou curto depois de normalizar é barrado", async () => {
+    render(<CreatePortalForm minOpeningMs={0} />);
+    await fill("exemplo.com", "çã");
+    expect(createLink).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/de 3 a 32/i);
+    await userEvent.clear(screen.getByPlaceholderText("personalizar"));
+    await fill("", "!!!");
+    expect(createLink).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/de 3 a 32/i);
+  });
+
   it("sem alias deixa a API gerar o código", async () => {
     createLink.mockResolvedValue(link);
     render(<CreatePortalForm minOpeningMs={0} />);

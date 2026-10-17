@@ -4,9 +4,10 @@ import { logout, type User } from "../api/auth";
 import lumiGuardian from "../assets/lumi-guardian.png";
 import lumiLogo from "../assets/lumi-logo-v2.png";
 import CreatePortalForm from "./components/CreatePortalForm";
-import PortalsSection from "./components/PortalsSection";
+import { OrbitStation, StatsGrid, TravelFlowPanel } from "./components/OverviewPanels";
 import RevealDestinationPanel from "./components/RevealDestinationPanel";
 import { Icon, icons } from "./icons";
+import { useOverview } from "./useOverview";
 
 const navItems = [
   ["Visão geral", icons.home],
@@ -24,8 +25,6 @@ const recentLinks = [
   { name: "Evento Orbit", short: "l2.to/orbit-live", clicks: "396", color: "blue", change: "+24%" },
 ];
 
-const chartBars = [34, 48, 42, 66, 58, 78, 54, 72, 84, 62, 94, 76];
-
 const pageHeadings: Record<string, [string, string]> = {
   "Visão geral": ["CENTRAL DE COMANDO", "Olá, Ana. Pronta para decolar?"],
   "Meus portais": ["BIBLIOTECA DE DESTINOS", "Seus portais digitais"],
@@ -35,6 +34,15 @@ const pageHeadings: Record<string, [string, string]> = {
   Conquistas: ["DIÁRIO DE CONQUISTAS", "Cada viagem merece ser celebrada"],
   Configurações: ["AJUSTES DA ESTAÇÃO", "Seu universo, do seu jeito"],
 };
+
+const portalCards = [
+  { name: "Campanha Nebulosa", slug: "l2.to/nebulosa", destination: "lumi.studio/campanha", trips: "1.248", status: "Ativo", tone: "violet" },
+  { name: "Portfólio 2025", slug: "l2.to/ana-design", destination: "anadesign.com.br", trips: "842", status: "Ativo", tone: "cyan" },
+  { name: "Evento Orbit", slug: "l2.to/orbit-live", destination: "youtube.com/orbit", trips: "396", status: "Agendado", tone: "blue" },
+  { name: "Clube Supernova", slug: "l2.to/supernova", destination: "comunidade.lumi.co", trips: "2.104", status: "Ativo", tone: "pink" },
+  { name: "Guia de Marca", slug: "l2.to/brand-kit", destination: "figma.com/lumi-kit", trips: "219", status: "Pausado", tone: "amber" },
+  { name: "Newsletter Lunar", slug: "l2.to/carta-lunar", destination: "lumi.substack.com", trips: "684", status: "Ativo", tone: "indigo" },
+];
 
 const achievements = [
   { title: "Primeiro portal", description: "Você abriu seu primeiro portal digital.", progress: 100, unlocked: true, detail: "Desbloqueada em 02 Mai", tone: "violet", icon: icons.portal },
@@ -49,6 +57,7 @@ const achievements = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const overview = useOverview();
   // Usuário vindo do loader da rota /dashboard (o /api/me); sem ele, mantém o nome do protótipo.
   const user = useRouteLoaderData("dashboard") as User | undefined;
   const userName = user?.name ?? "Ana Martins";
@@ -65,6 +74,7 @@ export default function Dashboard() {
   const [notificationsActive, setNotificationsActive] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [autoShield, setAutoShield] = useState(true);
+  const [portalFilter, setPortalFilter] = useState("Todos");
   const [ambientOn, setAmbientOn] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const savedTheme = window.localStorage.getItem("lumi-theme");
@@ -295,60 +305,10 @@ export default function Dashboard() {
         {active === "Visão geral" && (<>
         <CreatePortalForm />
 
-        <section className="stats-grid">
-          <article className="stat-card">
-            <div className="stat-icon violet">{icons.link}</div>
-            <div>
-              <span>Portais ativos</span>
-              <strong>24</strong>
-              <small><b>+3</b> este mês</small>
-            </div>
-            <div className="mini-stars"><i /><i /><i /></div>
-          </article>
-          <article className="stat-card">
-            <div className="stat-icon cyan">{icons.chart}</div>
-            <div>
-              <span>Viagens realizadas</span>
-              <strong>8.429</strong>
-              <small><b>+18,4%</b> vs. mês passado</small>
-            </div>
-          </article>
-          <article className="stat-card">
-            <div className="stat-icon blue">{icons.shield}</div>
-            <div>
-              <span>Ameaças bloqueadas</span>
-              <strong>137</strong>
-              <small><b>100%</b> dos portais seguros</small>
-            </div>
-          </article>
-        </section>
+        <StatsGrid overview={overview} />
 
         <section className="thematic-grid">
-          <article className="portal-station">
-            <div className="station-heading">
-              <div>
-                <span>ESTAÇÃO L²</span>
-                <h3>Portais em órbita</h3>
-              </div>
-              <b><i /> 3 ativos agora</b>
-            </div>
-            <div className="portal-list">
-              <div className="portal-destination">
-                <div className="destination-ring violet-portal"><i /><span /></div>
-                <div><strong>Nebulosa</strong><span>1.248 viajantes</span></div>
-              </div>
-              <div className="portal-route"><i /><i /><i /></div>
-              <div className="portal-destination">
-                <div className="destination-ring cyan-portal"><i /><span /></div>
-                <div><strong>Orbit Live</strong><span>396 viajantes</span></div>
-              </div>
-              <div className="portal-route"><i /><i /><i /></div>
-              <div className="portal-destination">
-                <div className="destination-ring blue-portal"><i /><span /></div>
-                <div><strong>Ana Design</strong><span>842 viajantes</span></div>
-              </div>
-            </div>
-          </article>
+          <OrbitStation overview={overview} />
         </section>
 
         <section className="content-grid">
@@ -389,32 +349,60 @@ export default function Dashboard() {
             </div>
           </article>
 
-          <article className="panel journey-panel">
-            <div className="panel-heading">
-              <div>
-                <span>ROTAS EM MOVIMENTO</span>
-                <h3>Fluxo de viagens</h3>
-              </div>
-              <button className="period-button" type="button">Últimos 12 dias⌄</button>
-            </div>
-            <div className="chart-meta">
-              <div><strong>2.846</strong><span>viagens no período</span></div>
-              <b>+12,8%</b>
-            </div>
-            <div className="chart">
-              <div className="chart-grid"><i /><i /><i /></div>
-              <div className="bars">
-                {chartBars.map((height, index) => (
-                  <span className={index === 10 ? "highlight" : ""} key={index} style={{ height: `${height}%` }} />
-                ))}
-              </div>
-            </div>
-            <div className="chart-labels"><span>01 Mai</span><span>06 Mai</span><span>12 Mai</span></div>
-          </article>
+          <TravelFlowPanel overview={overview} />
         </section>
         </>)}
 
-        {active === "Meus portais" && <PortalsSection />}
+        {active === "Meus portais" && (
+          <section className="page-content">
+            <div className="page-toolbar">
+              <div className="filter-tabs">
+                {["Todos", "Ativos", "Agendados", "Pausados"].map((filter) => (
+                  <button
+                    className={portalFilter === filter ? "selected" : ""}
+                    key={filter}
+                    onClick={() => setPortalFilter(filter)}
+                    type="button"
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
+              <button className="page-primary" onClick={() => setActive("Visão geral")} type="button">
+                {icons.plus} Novo portal
+              </button>
+            </div>
+            <div className="portal-library">
+              {portalCards
+                .filter((portal) => portalFilter === "Todos" || `${portal.status}s` === portalFilter)
+                .map((portal) => (
+                  <article className="library-card" key={portal.slug}>
+                    <div className={`library-portal ${portal.tone}`}>
+                      <i /><span>{icons.link}</span>
+                    </div>
+                    <div className="library-card-top">
+                      <span className={`portal-status ${portal.status.toLowerCase()}`}><i /> {portal.status}</span>
+                      <button aria-label={`Opções de ${portal.name}`} type="button">•••</button>
+                    </div>
+                    <h2>{portal.name}</h2>
+                    <button className="short-link" onClick={() => copyLink(portal.slug)} type="button">
+                      {portal.slug} {copied === portal.slug ? icons.check : icons.copy}
+                    </button>
+                    <div className="destination-line">
+                      <span>DESTINO</span>
+                      <p>{portal.destination}</p>
+                    </div>
+                    <div className="library-footer">
+                      <div><strong>{portal.trips}</strong><span>viagens</span></div>
+                      <button onClick={() => previewPortal(portal.slug)} type="button">
+                        Visualizar {icons.arrow}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+            </div>
+          </section>
+        )}
 
         {active === "Revelar destino" && <RevealDestinationPanel />}
 

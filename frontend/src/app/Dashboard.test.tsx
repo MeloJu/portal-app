@@ -4,6 +4,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { vi } from "vitest";
 import * as auth from "../api/auth";
 import * as links from "../api/links";
+import * as dashboard from "../api/dashboard";
 import Dashboard from "./Dashboard";
 
 vi.mock("../api/auth", async (importOriginal) => ({
@@ -14,6 +15,12 @@ vi.mock("../api/links", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/links")>()),
   createLink: vi.fn(),
 }));
+vi.mock("../api/dashboard", () => ({ getOverview: vi.fn() }));
+vi.mocked(dashboard.getOverview).mockResolvedValue({
+  summary: { activeLinks: 2, totalTravels: 41, travelsChangePct: 5, blockedThreats: 3 },
+  travels: [{ date: "2026-10-16", travels: 4 }],
+  topLinks: [{ code: "abc123", title: "Campanha Real", travels: 41 }],
+});
 
 function renderDashboard() {
   const router = createMemoryRouter(
@@ -27,7 +34,6 @@ function renderDashboard() {
   return router;
 }
 
-const NO_EXTRAS = { title: null, maxTravels: null };
 const nav = () => screen.getByRole("navigation", { name: /navegação principal/i });
 
 describe("Dashboard", () => {
@@ -35,6 +41,15 @@ describe("Dashboard", () => {
     renderDashboard();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/pronta para decolar/i);
     expect(screen.getByPlaceholderText(/cole seu link longo/i)).toBeInTheDocument();
+  });
+
+  it("a visão geral mostra os números da API", async () => {
+    renderDashboard();
+    expect(await screen.findByText("Campanha Real")).toBeInTheDocument();
+    const travels = screen.getByText("Viagens realizadas").closest("article")!;
+    expect(within(travels).getByText("41")).toBeInTheDocument();
+    expect(screen.getByText("41 viajantes")).toBeInTheDocument();
+    expect(dashboard.getOverview).toHaveBeenCalledWith(12);
   });
 
   it("troca de seção pela navegação lateral", async () => {
@@ -45,31 +60,29 @@ describe("Dashboard", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/merece ser celebrada/i);
   });
 
-  it("Meus portais lista os portais da API", async () => {
-    const page = {
-      items: [
-        {
-          code: "nebulosa",
-          shortUrl: "https://l2.to/nebulosa",
-          targetUrl: "https://lumi.studio/campanha",
-          title: "Campanha Nebulosa",
-          state: "ACTIVE",
-          travelCount: 1248,
-          expiresAt: null,
-          maxTravels: null,
-          createdAt: "2026-10-16T12:00:00Z",
-        },
-      ],
-      page: 0,
-      totalItems: 1,
-    };
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(page), { status: 200 })));
+  it("filtra os portais por status", async () => {
     renderDashboard();
     await userEvent.click(within(nav()).getByRole("button", { name: "Meus portais" }));
-    expect(await screen.findByText("Campanha Nebulosa")).toBeInTheDocument();
-    expect(screen.getByText("1.248")).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Agendados" })).not.toBeInTheDocument();
-    vi.unstubAllGlobals();
+    expect(screen.getAllByRole("article")).toHaveLength(6);
+    await userEvent.click(screen.getByRole("button", { name: "Pausados" }));
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    expect(screen.getByText("Guia de Marca")).toBeInTheDocument();
+  });
+
+  it("copia o link da Nebulosa e mostra o check após copiar", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    renderDashboard();
+    await userEvent.click(within(nav()).getByRole("button", { name: "Meus portais" }));
+
+    const nebulosaLink = screen.getByRole("button", { name: /l2\.to\/nebulosa/i });
+    await userEvent.click(nebulosaLink);
+
+    expect(writeText).toHaveBeenCalledWith("https://l2.to/nebulosa");
+    expect(nebulosaLink.querySelector("path")?.getAttribute("d")).toBe("m5 12 4 4L19 6");
   });
 
   it("cria um portal com o slug personalizado normalizado", async () => {
@@ -88,7 +101,7 @@ describe("Dashboard", () => {
       createdAt: "2026-10-16T12:00:00Z",
     });
     await userEvent.click(screen.getByRole("button", { name: /criar portal/i }));
-    expect(links.createLink).toHaveBeenCalledWith("https://exemplo.com/muito/longo", "meu-link", NO_EXTRAS);
+    expect(links.createLink).toHaveBeenCalledWith("https://exemplo.com/muito/longo", "meu-link");
     expect(await screen.findByText("l2.to/meu-link", {}, { timeout: 3000 })).toBeInTheDocument();
   });
 

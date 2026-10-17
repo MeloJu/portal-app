@@ -33,6 +33,11 @@ function mockFetch(route: Route) {
 const calls = (fetchMock: ReturnType<typeof mockFetch>) =>
   fetchMock.mock.calls.map(([url, init]) => `${init?.method ?? "GET"} ${url}`);
 
+async function openMenu(name: string) {
+  await userEvent.click(await screen.findByRole("button", { name: `Opções de ${name}` }));
+  return screen.getByRole("menu", { name: `Opções de ${name}` });
+}
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe("PortalsSection", () => {
@@ -111,6 +116,83 @@ describe("PortalsSection", () => {
     await userEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
     expect(await screen.findByText("Campanha Nebulosa")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("pausar chama o PATCH com paused e recarrega a lista", async () => {
+    const fetchMock = mockFetch((url, init) =>
+      init.method === "PATCH" ? json(makeLink({ state: "PAUSED" })) : page([makeLink()]),
+    );
+    render(<PortalsSection />);
+    const menu = await openMenu("Campanha Nebulosa");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Pausar portal" }));
+    await vi.waitFor(() =>
+      expect(calls(fetchMock)).toEqual([
+        "GET /api/links?page=0&size=20",
+        "PATCH /api/links/nebulosa",
+        "GET /api/links?page=0&size=20",
+      ]),
+    );
+    expect(JSON.parse(fetchMock.mock.calls[1]![1]!.body as string)).toEqual({ paused: true });
+  });
+
+  it("portal pausado oferece retomar", async () => {
+    const fetchMock = mockFetch((url, init) =>
+      init.method === "PATCH" ? json(makeLink()) : page([makeLink({ state: "PAUSED" })]),
+    );
+    render(<PortalsSection />);
+    const menu = await openMenu("Campanha Nebulosa");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Retomar portal" }));
+    await vi.waitFor(() => expect(calls(fetchMock)).toContain("PATCH /api/links/nebulosa"));
+    expect(JSON.parse(fetchMock.mock.calls[1]![1]!.body as string)).toEqual({ paused: false });
+  });
+
+  it("fechar pede confirmação no card e só o Sim chama o DELETE", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm");
+    const fetchMock = mockFetch((url, init) =>
+      init.method === "DELETE" ? new Response(null, { status: 204 }) : page([makeLink()]),
+    );
+    render(<PortalsSection />);
+    let menu = await openMenu("Campanha Nebulosa");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Fechar portal" }));
+    let confirm = screen.getByRole("group", { name: "Fechar Campanha Nebulosa" });
+    expect(confirm).toHaveTextContent("Fechar portal?");
+    await userEvent.click(within(confirm).getByRole("button", { name: "Não" }));
+    expect(calls(fetchMock)).not.toContain("DELETE /api/links/nebulosa");
+
+    menu = await openMenu("Campanha Nebulosa");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Fechar portal" }));
+    confirm = screen.getByRole("group", { name: "Fechar Campanha Nebulosa" });
+    await userEvent.click(within(confirm).getByRole("button", { name: "Sim" }));
+    await vi.waitFor(() => expect(calls(fetchMock)).toContain("DELETE /api/links/nebulosa"));
+    await vi.waitFor(() => expect(calls(fetchMock).at(-1)).toBe("GET /api/links?page=0&size=20"));
+    expect(confirmSpy).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it("botões ficam desabilitados durante a requisição e o erro aparece no card", async () => {
+    let finish: (res: Response) => void = () => {};
+    mockFetch((url, init) =>
+      init.method === "PATCH" ? new Promise<Response>((resolve) => (finish = resolve)) : page([makeLink()]),
+    );
+    render(<PortalsSection />);
+    const menu = await openMenu("Campanha Nebulosa");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Pausar portal" }));
+    expect(screen.getByRole("button", { name: "Opções de Campanha Nebulosa" })).toBeDisabled();
+    finish(json({ code: "NOT_FOUND", message: "Portal não encontrado" }, 404));
+    const card = screen.getByText("Campanha Nebulosa").closest("article")!;
+    expect(await within(card).findByRole("alert")).toHaveTextContent("Portal não encontrado");
+    expect(screen.getByRole("button", { name: "Opções de Campanha Nebulosa" })).toBeEnabled();
+  });
+
+  it("card fechado só oferece copiar", async () => {
+    mockFetch(() => page([makeLink({ state: "CLOSED" })]));
+    render(<PortalsSection />);
+    const menu = await openMenu("Campanha Nebulosa");
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent?.trim()),
+    ).toEqual(["Copiar link"]);
   });
 
   it("copiar usa a shortUrl e mostra Copiado", async () => {

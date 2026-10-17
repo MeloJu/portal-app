@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ApiError, UNAUTHORIZED_EVENT } from "./client";
 import { getOverview } from "./dashboard";
 
 const summary = { activeLinks: 3, totalTravels: 42, travelsChangePct: 12.5, blockedThreats: 1 };
@@ -33,5 +34,18 @@ describe("getOverview", () => {
   it("falha se alguma chamada falhar", async () => {
     serve({}, 500);
     await expect(getOverview(12)).rejects.toThrow();
+  });
+
+  it("sessão expirada vira ApiError 401 e avisa o app", async () => {
+    serve({}, 401);
+    const onUnauthorized = vi.fn();
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    try {
+      await expect(getOverview(12)).rejects.toMatchObject({ status: 401 });
+      await expect(getOverview(12)).rejects.toBeInstanceOf(ApiError);
+      expect(onUnauthorized).toHaveBeenCalled();
+    } finally {
+      window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    }
   });
 });

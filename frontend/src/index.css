@@ -1407,6 +1407,13 @@ button {
   border-bottom: 0;
 }
 
+.links-empty {
+  margin: 0;
+  padding: 18px 0;
+  color: #8a8da1;
+  font-size: 10px;
+}
+
 .link-orb {
   position: relative;
   display: grid;

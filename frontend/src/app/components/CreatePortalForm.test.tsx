@@ -9,6 +9,7 @@ vi.mock("../../api/links", async (importOriginal) => ({
   createLink: vi.fn(),
 }));
 const createLink = vi.mocked(api.createLink);
+const NO_EXTRAS = { title: null, maxTravels: null };
 
 const link: api.Link = {
   code: "meu-link",
@@ -35,7 +36,7 @@ describe("CreatePortalForm", () => {
     createLink.mockResolvedValue(link);
     render(<CreatePortalForm minOpeningMs={0} />);
     await fill("https://exemplo.com/muito/longo", "Meu Link");
-    expect(createLink).toHaveBeenCalledWith("https://exemplo.com/muito/longo", "meu-link");
+    expect(createLink).toHaveBeenCalledWith("https://exemplo.com/muito/longo", "meu-link", NO_EXTRAS);
     expect(await screen.findByText("lumi.example/meu-link")).toBeInTheDocument();
   });
 
@@ -47,7 +48,7 @@ describe("CreatePortalForm", () => {
     createLink.mockResolvedValue(link);
     render(<CreatePortalForm minOpeningMs={0} />);
     await fill("exemplo.com", typed);
-    expect(createLink).toHaveBeenCalledWith("exemplo.com", alias);
+    expect(createLink).toHaveBeenCalledWith("exemplo.com", alias, NO_EXTRAS);
   });
 
   it("alias que vira vazio ou curto depois de normalizar é barrado", async () => {
@@ -65,7 +66,28 @@ describe("CreatePortalForm", () => {
     createLink.mockResolvedValue(link);
     render(<CreatePortalForm minOpeningMs={0} />);
     await fill("exemplo.com");
-    expect(createLink).toHaveBeenCalledWith("exemplo.com", null);
+    expect(createLink).toHaveBeenCalledWith("exemplo.com", null, NO_EXTRAS);
+  });
+
+  it("manda título e limite de viagens das opções extras", async () => {
+    createLink.mockResolvedValue(link);
+    const onCreated = vi.fn();
+    render(<CreatePortalForm minOpeningMs={0} onCreated={onCreated} />);
+    await userEvent.click(screen.getByRole("button", { name: /mais opções/i }));
+    await userEvent.type(screen.getByLabelText(/título/i), "Campanha");
+    await userEvent.type(screen.getByLabelText(/limite de viagens/i), "500");
+    await fill("exemplo.com");
+    expect(createLink).toHaveBeenCalledWith("exemplo.com", null, { title: "Campanha", maxTravels: 500 });
+    await vi.waitFor(() => expect(onCreated).toHaveBeenCalledWith(link));
+  });
+
+  it("barra limite de viagens menor que 1 antes da API", async () => {
+    render(<CreatePortalForm minOpeningMs={0} />);
+    await userEvent.click(screen.getByRole("button", { name: /mais opções/i }));
+    await userEvent.type(screen.getByLabelText(/limite de viagens/i), "0");
+    await fill("exemplo.com");
+    expect(createLink).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/a partir de 1/i);
   });
 
   it("copiar usa a shortUrl da API", async () => {

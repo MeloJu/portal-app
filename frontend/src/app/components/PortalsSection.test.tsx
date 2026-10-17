@@ -112,4 +112,29 @@ describe("PortalsSection", () => {
     expect(await screen.findByText("Campanha Nebulosa")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("copiar usa a shortUrl e mostra Copiado", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    mockFetch(() => page([makeLink({ shortUrl: "https://lumi.example/nebulosa" })]));
+    render(<PortalsSection />);
+    await userEvent.click(await screen.findByRole("button", { name: "Copiar lumi.example/nebulosa" }));
+    expect(writeText).toHaveBeenCalledWith("https://lumi.example/nebulosa");
+    expect(await screen.findByText("Copiado")).toBeInTheDocument();
+  });
+
+  it("criar um portal pelo Novo portal recarrega a lista", async () => {
+    const fetchMock = mockFetch((url, init) =>
+      init.method === "POST" ? json(makeLink({ code: "novo" }), 201) : page([makeLink()]),
+    );
+    render(<PortalsSection />);
+    await screen.findByText("Campanha Nebulosa");
+    await userEvent.click(screen.getByRole("button", { name: /novo portal/i }));
+    await userEvent.type(screen.getByPlaceholderText(/cole seu link longo/i), "exemplo.com");
+    await userEvent.click(screen.getByRole("button", { name: /criar portal/i }));
+    await vi.waitFor(() => expect(calls(fetchMock)).toContain("POST /api/links"), { timeout: 3000 });
+    await vi.waitFor(() => expect(calls(fetchMock).filter((c) => c.startsWith("GET"))).toHaveLength(2), {
+      timeout: 3000,
+    });
+  });
 });

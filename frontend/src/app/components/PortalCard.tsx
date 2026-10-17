@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import type { Link } from "../../api/lumi";
 import { formatNumber, shortLabel } from "../format";
 import { icons } from "../icons";
@@ -36,8 +37,25 @@ type Props = {
 };
 
 export default function PortalCard({ link }: Props) {
+  const copiedTimerRef = useRef(0);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => () => window.clearTimeout(copiedTimerRef.current), []);
+
   const name = portalName(link);
   const badge = stateBadge(link);
+
+  async function copy() {
+    if (!navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(link.shortUrl);
+    } catch {
+      return;
+    }
+    window.clearTimeout(copiedTimerRef.current);
+    setCopied(true);
+    copiedTimerRef.current = window.setTimeout(() => setCopied(false), 1600);
+  }
 
   return (
     <article className="library-card">
@@ -51,7 +69,14 @@ export default function PortalCard({ link }: Props) {
         </span>
       </div>
       <h2>{name}</h2>
-      <span className="short-link">{shortLabel(link.shortUrl)}</span>
+      <button aria-label={`Copiar ${shortLabel(link.shortUrl)}`} className="short-link" onClick={copy} type="button">
+        {shortLabel(link.shortUrl)} {copied ? icons.check : icons.copy}
+      </button>
+      {copied && (
+        <span className="library-copied" role="status">
+          Copiado
+        </span>
+      )}
       <div className="destination-line">
         <span>DESTINO</span>
         <p title={link.targetUrl}>{shortLabel(link.targetUrl)}</p>

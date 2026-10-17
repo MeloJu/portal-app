@@ -344,7 +344,7 @@ export default function Dashboard() {
         </section>
         </>)}
 
-        {active === "Meus portais" && <PortalsSection onNewPortal={() => setActive("Visão geral")} />}
+        {active === "Meus portais" && <PortalsSection />}
 
         {active === "Revelar destino" && <RevealDestinationPanel />}
 

@@ -34,6 +34,7 @@ function renderDashboard() {
   return router;
 }
 
+const NO_EXTRAS = { title: null, maxTravels: null };
 const nav = () => screen.getByRole("navigation", { name: /navegação principal/i });
 
 describe("Dashboard", () => {
@@ -103,7 +104,7 @@ describe("Dashboard", () => {
       createdAt: "2026-10-16T12:00:00Z",
     });
     await userEvent.click(screen.getByRole("button", { name: /criar portal/i }));
-    expect(links.createLink).toHaveBeenCalledWith("https://exemplo.com/muito/longo", "meu-link");
+    expect(links.createLink).toHaveBeenCalledWith("https://exemplo.com/muito/longo", "meu-link", NO_EXTRAS);
     expect(await screen.findByText("l2.to/meu-link", {}, { timeout: 3000 })).toBeInTheDocument();
   });
 

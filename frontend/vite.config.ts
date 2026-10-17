@@ -11,12 +11,13 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Chaves com a barra final: em string o Vite casa por prefixo, e "/r" levaria /rocket (um portal) ao backend.
     proxy: {
-      "/tools": "http://localhost:3001",
+      "/tools/": "http://localhost:3001",
       // API Spring (scripts/dev-backend*). Mesma origem: o cookie de sessão funciona sem CORS.
-      "/api": "http://localhost:8080",
+      "/api/": "http://localhost:8080",
       // Redirect 302 direto do backend (robôs e teste de carga). A Travessia do front fica em /{code}.
-      "/r": "http://localhost:8080",
+      "/r/": "http://localhost:8080",
     },
   },
   test: {

@@ -16,7 +16,8 @@ describe("travel", () => {
       title: "Campanha",
       travelCount: 7,
     });
-    expect(fetch).toHaveBeenCalledWith("/api/travel/aB3x9Q", expect.objectContaining({ credentials: "same-origin" }));
+    // Sem cookie: a Travessia é pública, e uma sessão vencida no navegador daria 401 até no permitAll.
+    expect(fetch).toHaveBeenCalledWith("/api/travel/aB3x9Q", expect.objectContaining({ credentials: "omit" }));
   });
 
   it("escapa o código na URL", async () => {

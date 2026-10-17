@@ -15,7 +15,8 @@ export async function travel(code: string): Promise<TravelOutcome> {
   let res: Response;
   try {
     res = await fetch(`/api/travel/${encodeURIComponent(code)}`, {
-      credentials: "same-origin",
+      // Sem cookie: a rota é pública, e uma sessão vencida no navegador daria 401 até no permitAll.
+      credentials: "omit",
       headers: { accept: "application/json" },
     });
   } catch {

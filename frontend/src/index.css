@@ -3121,7 +3121,7 @@ html[data-theme="dark"] .reveal-error {
 
 .journey-summary {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 13px;
   margin-bottom: 16px;
 }
@@ -3313,6 +3313,7 @@ html[data-theme="dark"] .reveal-error {
 .rank-row strong { color: #444457; font-size: 9px; }
 .rank-row div > i { height: 3px; overflow: hidden; border-radius: 99px; background: #efedf4; }
 .rank-row div > i span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7357dd, #54d7c6); }
+.rank-empty { margin: 0; padding: 14px 0; border-top: 1px solid #efedf4; color: #8a8da1; font-size: 10px; line-height: 1.5; }
 
 .security-hero {
   position: relative;
@@ -4060,6 +4061,7 @@ html[data-theme="dark"] .links-list,
 html[data-theme="dark"] .link-row,
 html[data-theme="dark"] .destination-line,
 html[data-theme="dark"] .rank-row,
+html[data-theme="dark"] .rank-empty,
 html[data-theme="dark"] .threat-row,
 html[data-theme="dark"] .preference-row {
   border-color: #2a273c;

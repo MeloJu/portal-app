@@ -8,6 +8,7 @@ import RecentPortals from "./components/RecentPortals";
 import PortalsSection from "./components/PortalsSection";
 import { OrbitStation, StatsGrid, TravelFlowPanel } from "./components/OverviewPanels";
 import RevealDestinationPanel from "./components/RevealDestinationPanel";
+import TravelsSection from "./components/TravelsSection";
 import { Icon, icons } from "./icons";
 import { useOverview } from "./useOverview";
 
@@ -286,50 +287,7 @@ export default function Dashboard() {
 
         {active === "Revelar destino" && <RevealDestinationPanel />}
 
-        {active === "Viagens" && (
-          <section className="page-content">
-            <div className="journey-summary">
-              <article><span>VIAGENS TOTAIS</span><strong>8.429</strong><b>+18,4% este mês</b></article>
-              <article><span>VIAJANTES ÚNICOS</span><strong>6.174</strong><b>73,2% do total</b></article>
-              <article><span>TEMPO ATÉ O DESTINO</span><strong>0,28s</strong><b>Rota ultrarrápida</b></article>
-              <article><span>PAÍSES ALCANÇADOS</span><strong>24</strong><b>+3 novas órbitas</b></article>
-            </div>
-            <div className="journey-layout">
-              <article className="cosmic-map">
-                <div className="map-heading">
-                  <div><span>TRÁFEGO AO VIVO</span><h2>Viagens pelo universo</h2></div>
-                  <b><i /> 17 agora</b>
-                </div>
-                <div className="map-space">
-                  <div className="map-orbit orbit-a"><i /></div>
-                  <div className="map-orbit orbit-b"><i /></div>
-                  <div className="map-planet planet-main"><span>L²</span></div>
-                  <div className="map-planet planet-one"><i /><small>Brasil</small></div>
-                  <div className="map-planet planet-two"><i /><small>Portugal</small></div>
-                  <div className="map-planet planet-three"><i /><small>Estados Unidos</small></div>
-                  <div className="travel-streak streak-one" />
-                  <div className="travel-streak streak-two" />
-                  <div className="travel-streak streak-three" />
-                </div>
-              </article>
-              <article className="rank-panel">
-                <div className="panel-heading"><div><span>DESTINOS FAVORITOS</span><h3>Rotas mais viajadas</h3></div></div>
-                {[
-                  ["01", "Campanha Nebulosa", "1.248", 88],
-                  ["02", "Portfólio 2025", "842", 66],
-                  ["03", "Newsletter Lunar", "684", 51],
-                  ["04", "Evento Orbit", "396", 34],
-                ].map(([rank, name, trips, width]) => (
-                  <div className="rank-row" key={name}>
-                    <b>{rank}</b>
-                    <div><strong>{name}</strong><i><span style={{ width: `${width}%` }} /></i></div>
-                    <span>{trips}</span>
-                  </div>
-                ))}
-              </article>
-            </div>
-          </section>
-        )}
+        {active === "Viagens" && <TravelsSection />}
 
         {active === "Proteção" && (
           <section className="page-content">

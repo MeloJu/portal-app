@@ -7,7 +7,6 @@ const pctFormat = new Intl.NumberFormat("pt-BR", {
   signDisplay: "exceptZero",
 });
 
-
 export function formatNumber(n: number): string {
   return numberFormat.format(n);
 }
@@ -17,7 +16,6 @@ export function formatPct(p: number | null): string {
   return p === null ? "—" : `${pctFormat.format(p)}%`;
 }
 
-
 export function shortLabel(shortUrl: string): string {
   try {
     const url = new URL(shortUrl);
@@ -26,7 +24,6 @@ export function shortLabel(shortUrl: string): string {
     return shortUrl;
   }
 }
-
 
 export function relativeTime(iso: string, now: Date = new Date()): string {
   const minutes = Math.floor((now.getTime() - new Date(iso).getTime()) / 60_000);

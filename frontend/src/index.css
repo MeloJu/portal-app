@@ -1025,6 +1025,22 @@ button {
   font-size: 10px;
 }
 
+.create-portal-error {
+  position: absolute;
+  z-index: 5;
+  right: 40px;
+  bottom: 89px;
+  max-width: 420px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 128, 150, 0.35);
+  border-radius: 12px;
+  color: #ffc2cc;
+  background: rgba(45, 11, 24, 0.94);
+  box-shadow: 0 12px 30px rgba(2, 5, 23, 0.3);
+  font-size: 11px;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

@@ -1,9 +1,9 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useRouteLoaderData } from "react-router";
 import { logout, type User } from "../api/auth";
 import lumiGuardian from "../assets/lumi-guardian.png";
 import lumiLogo from "../assets/lumi-logo-v2.png";
-import lumiPortalBackground from "../assets/lumi-portal-bg.png";
+import CreatePortalForm from "./components/CreatePortalForm";
 import RevealDestinationPanel from "./components/RevealDestinationPanel";
 import { Icon, icons } from "./icons";
 
@@ -69,11 +69,7 @@ export default function Dashboard() {
   const ambientTimerRef = useRef(0);
   const copiedTimerRef = useRef(0);
   const [active, setActive] = useState("Visão geral");
-  const [url, setUrl] = useState("");
-  const [slug, setSlug] = useState("");
-  const [created, setCreated] = useState("");
   const [copied, setCopied] = useState("");
-  const [isOpening, setIsOpening] = useState(false);
   const [notificationsActive, setNotificationsActive] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [autoShield, setAutoShield] = useState(true);
@@ -158,20 +154,6 @@ export default function Dashboard() {
     master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), context.currentTime);
     master.gain.exponentialRampToValueAtTime(0.018, context.currentTime + 0.8);
     setAmbientOn(true);
-  }
-
-  function createLink(event: FormEvent) {
-    event.preventDefault();
-    if (!url.trim()) return;
-    const safeSlug =
-      slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-") ||
-      `portal-${Math.floor(100 + Math.random() * 900)}`;
-    setCreated("");
-    setIsOpening(true);
-    window.setTimeout(() => {
-      setCreated(`l2.to/${safeSlug}`);
-      setIsOpening(false);
-    }, 1400);
   }
 
   async function copyLink(value: string) {
@@ -320,77 +302,7 @@ export default function Dashboard() {
         </header>
 
         {active === "Visão geral" && (<>
-        <section className={`creator-card ${isOpening ? "portal-active" : ""}`} aria-busy={isOpening}>
-          <img
-            className="creator-background"
-            src={lumiPortalBackground}
-            alt=""
-            aria-hidden="true"
-          />
-          <div className="creator-overlay" />
-          <div className="creator-copy">
-            <span className="pill">{icons.spark} ABRIR NOVO PORTAL</span>
-            <h2>Para onde vamos agora?</h2>
-            <p>Cole seu link. A Lumi cuida do caminho.</p>
-          </div>
-          <form className="link-form" onSubmit={createLink}>
-            <label className="url-field">
-              <span>{icons.link}</span>
-              <input
-                inputMode="url"
-                onChange={(event) => setUrl(event.target.value)}
-                placeholder="Cole seu link longo aqui..."
-                type="text"
-                value={url}
-              />
-            </label>
-            <label className="slug-field">
-              <span>l2.to/</span>
-              <input
-                onChange={(event) => setSlug(event.target.value)}
-                placeholder="personalizar"
-                type="text"
-                value={slug}
-              />
-            </label>
-            <button className="primary-button" disabled={isOpening} type="submit">
-              {isOpening ? "Abrindo portal..." : "Criar portal"} {!isOpening && icons.arrow}
-            </button>
-          </form>
-          {isOpening && (
-            <div className="portal-opening" role="status" aria-live="polite">
-              <div className="opening-vortex" aria-hidden="true">
-                <div className="portal-energy"><i /><i /><i /><i /></div>
-                <div className="portal-ripples"><i /><i /><i /></div>
-                <span className="vortex-ring ring-outer" />
-                <span className="vortex-ring ring-middle" />
-                <span className="vortex-ring ring-inner" />
-                <span className="vortex-core">
-                  <img src={lumiLogo} alt="" />
-                </span>
-                <div className="portal-particles">
-                  <i /><i /><i /><i /><i /><i />
-                </div>
-              </div>
-              <div className="opening-copy">
-                <strong>Portal em formação</strong>
-                <span>Lumi está traçando a rota mais segura</span>
-              </div>
-            </div>
-          )}
-          {created && (
-            <div className="created-link" role="status">
-              <span>Portal aberto com sucesso</span>
-              <strong>{created}</strong>
-              <button onClick={() => copyLink(created)} type="button">
-                {copied === created ? icons.check : icons.copy} {copied === created ? "Copiado" : "Copiar"}
-              </button>
-              <button onClick={() => previewPortal(created)} type="button">
-                Visualizar {icons.arrow}
-              </button>
-            </div>
-          )}
-        </section>
+        <CreatePortalForm />
 
         <section className="stats-grid">
           <article className="stat-card">

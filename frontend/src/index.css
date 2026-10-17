@@ -4713,7 +4713,7 @@ html[data-theme="dark"] footer {
 
 .login-visual-copy > span {
   color: #70eadb;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.18em;
 }
@@ -4729,7 +4729,7 @@ html[data-theme="dark"] footer {
   max-width: 430px;
   margin: 0;
   color: #c5c2dc;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.55;
 }
 
@@ -4745,7 +4745,7 @@ html[data-theme="dark"] footer {
   color: #9fded6;
   background: rgba(10, 8, 35, 0.58);
   backdrop-filter: blur(8px);
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .login-status i {
@@ -4809,7 +4809,7 @@ html[data-theme="dark"] footer {
 
 .login-heading > span {
   color: #7560d5;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.15em;
 }
@@ -4817,13 +4817,13 @@ html[data-theme="dark"] footer {
 .login-heading h2 {
   margin: 5px 0;
   color: #29263f;
-  font: 600 25px "Space Grotesk", sans-serif;
+  font: 600 28px "Space Grotesk", sans-serif;
 }
 
 .login-heading p {
   margin: 0;
   color: #9895a8;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .login-form {
@@ -4839,7 +4839,7 @@ html[data-theme="dark"] footer {
 
 .login-form > label > span {
   color: #6f6b7e;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -4868,7 +4868,7 @@ html[data-theme="dark"] footer {
   outline: 0;
   color: #343044;
   background: transparent;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .login-form input::placeholder {
@@ -4879,7 +4879,7 @@ html[data-theme="dark"] footer {
   border: 0;
   color: #7660cf;
   background: transparent;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 600;
 }
 
@@ -4894,7 +4894,7 @@ html[data-theme="dark"] footer {
   align-items: center;
   gap: 5px;
   color: #7e7a8c;
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .login-options input {
@@ -4908,7 +4908,7 @@ html[data-theme="dark"] footer {
   padding: 0;
   color: #6b53ca;
   background: transparent;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 600;
 }
 
@@ -4918,7 +4918,7 @@ html[data-theme="dark"] footer {
   border-radius: 8px;
   color: #aa4f60;
   background: #fcecef;
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .login-submit {
@@ -4932,7 +4932,7 @@ html[data-theme="dark"] footer {
   color: white;
   background: linear-gradient(135deg, #7657e8, #4e31c7);
   box-shadow: 0 10px 24px rgba(73, 45, 190, 0.27);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -4943,7 +4943,7 @@ html[data-theme="dark"] footer {
 .login-demo {
   margin: 11px 0 0;
   color: #aaa6b5;
-  font-size: 8px;
+  font-size: 10px;
   text-align: center;
 }
 
@@ -4953,7 +4953,7 @@ html[data-theme="dark"] footer {
   gap: 10px;
   margin: 20px 0 14px;
   color: #aaa6b5;
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .login-divider::before,
@@ -4979,18 +4979,18 @@ html[data-theme="dark"] footer {
   border-radius: 10px;
   color: #5d596c;
   background: white;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .social-login b {
   color: #6e54d3;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .signup-copy {
   margin: 20px 0 0;
   color: #9895a5;
-  font-size: 8px;
+  font-size: 10px;
   text-align: center;
 }
 

@@ -6,6 +6,7 @@ import lumiLogo from "../assets/lumi-logo-v2.png";
 import CreatePortalForm from "./components/CreatePortalForm";
 import PortalsSection from "./components/PortalsSection";
 import { OrbitStation, StatsGrid, TravelFlowPanel } from "./components/OverviewPanels";
+import ProtectionSection from "./components/ProtectionSection";
 import RevealDestinationPanel from "./components/RevealDestinationPanel";
 import { Icon, icons } from "./icons";
 import { useOverview } from "./useOverview";
@@ -393,57 +394,7 @@ export default function Dashboard() {
           </section>
         )}
 
-        {active === "Proteção" && (
-          <section className="page-content">
-            <div className="security-hero">
-              <div className="shield-score">
-                <div className="shield-rings"><span>{icons.shield}</span></div>
-                <div><small>ÍNDICE DE PROTEÇÃO</small><strong>98</strong><b>/100</b></div>
-              </div>
-              <div className="security-copy">
-                <span>LUMI ESTÁ DE VIGIA</span>
-                <h2>Todos os portais estão protegidos</h2>
-                <p>As rotas são verificadas continuamente contra destinos perigosos, robôs e tentativas de fraude.</p>
-              </div>
-              <span className="secure-badge"><i /> Escudo ativo</span>
-            </div>
-            <div className="security-grid">
-              <article className="security-card">
-                <div className="security-icon">{icons.shield}</div>
-                <span>AMEAÇAS BLOQUEADAS</span><strong>137</strong>
-                <p>12 tentativas bloqueadas nos últimos 7 dias.</p>
-                <div className="security-bars"><i /><i /><i /><i /><i /><i /><i /></div>
-              </article>
-              <article className="security-card">
-                <div className="security-icon cyan">{icons.link}</div>
-                <span>DESTINOS VERIFICADOS</span><strong>24/24</strong>
-                <p>Nenhum destino suspeito encontrado.</p>
-                <div className="verified-line"><i /> Última análise há 3 minutos</div>
-              </article>
-              <article className="security-card">
-                <div className="security-icon violet">{icons.chart}</div>
-                <span>TRÁFEGO FILTRADO</span><strong>99,8%</strong>
-                <p>Cliques legítimos identificados com precisão.</p>
-                <div className="verified-line"><i /> Monitoramento contínuo</div>
-              </article>
-            </div>
-            <article className="threat-log">
-              <div className="panel-heading"><div><span>DIÁRIO DE BORDO</span><h3>Atividade de proteção recente</h3></div><button type="button">Ver relatório {icons.arrow}</button></div>
-              {[
-                ["Bot automatizado bloqueado", "Campanha Nebulosa", "Há 12 min", "Bloqueado"],
-                ["Destino verificado com sucesso", "Newsletter Lunar", "Há 38 min", "Seguro"],
-                ["Tentativa de acesso suspeita", "Portfólio 2025", "Há 2 h", "Bloqueado"],
-              ].map(([event, portal, time, result]) => (
-                <div className="threat-row" key={`${event}-${time}`}>
-                  <div className={`threat-dot ${result === "Seguro" ? "safe" : ""}`} />
-                  <div><strong>{event}</strong><span>{portal}</span></div>
-                  <time>{time}</time>
-                  <b className={result === "Seguro" ? "safe" : ""}>{result}</b>
-                </div>
-              ))}
-            </article>
-          </section>
-        )}
+        {active === "Proteção" && <ProtectionSection />}
 
         {active === "Conquistas" && (
           <section className="page-content achievements-page">

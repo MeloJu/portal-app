@@ -3418,6 +3418,10 @@ html[data-theme="dark"] .reveal-error {
 .security-bars i:nth-child(4) { height: 80%; }.security-bars i:nth-child(5) { height: 48%; }.security-bars i:nth-child(6) { height: 92%; }.security-bars i:nth-child(7) { height: 65%; }
 .verified-line { display: flex; align-items: center; gap: 6px; margin-top: 19px; color: #47a996; font-size: 8px; }
 .verified-line i { width: 6px; height: 6px; border-radius: 50%; background: #48b39e; }
+.security-hero .security-copy:first-child { margin-left: 0; }
+.reason-list { display: grid; gap: 7px; margin: 10px 0 0; padding: 0; list-style: none; }
+.reason-list li { display: flex; justify-content: space-between; gap: 10px; color: #9998a7; font-size: 9px; }
+.reason-list b { color: #2c2941; font-weight: 600; }
 
 .threat-log { margin-top: 16px; }
 .threat-row {
@@ -3436,6 +3440,7 @@ html[data-theme="dark"] .reveal-error {
 .threat-row span, .threat-row time { color: #a09ead; font-size: 8px; }
 .threat-row > b { padding: 4px 7px; border-radius: 99px; color: #b6675c; background: #faeeec; font-size: 7px; text-align: center; }
 .threat-row > b.safe { color: #258f7a; background: #e6f6f2; }
+.threat-empty { margin: 0; padding: 14px 0; border-top: 1px solid #efedf4; color: #8a8da1; font-size: 10px; line-height: 1.5; }
 
 .achievements-hero {
   position: relative;
@@ -3974,6 +3979,7 @@ html[data-theme="dark"] .journey-summary strong,
 html[data-theme="dark"] .rank-row strong,
 html[data-theme="dark"] .rank-row > span,
 html[data-theme="dark"] .security-card > strong,
+html[data-theme="dark"] .reason-list b,
 html[data-theme="dark"] .threat-row strong,
 html[data-theme="dark"] .settings-heading h2,
 html[data-theme="dark"] .preferences-panel h2,
@@ -4054,6 +4060,7 @@ html[data-theme="dark"] .link-row,
 html[data-theme="dark"] .destination-line,
 html[data-theme="dark"] .rank-row,
 html[data-theme="dark"] .threat-row,
+html[data-theme="dark"] .threat-empty,
 html[data-theme="dark"] .preference-row {
   border-color: #2a273c;
 }

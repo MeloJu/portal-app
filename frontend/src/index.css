@@ -5573,6 +5573,7 @@ html[data-theme="dark"] footer {
 }
 
 .portal-library-inline-error button,
+.portal-load-more,
 .portal-detail-error button {
   border: 1px solid #ddd6f4;
   border-radius: 10px;
@@ -5581,6 +5582,15 @@ html[data-theme="dark"] footer {
   background: white;
   font-size: 10px;
   font-weight: 600;
+}
+
+.portal-load-more {
+  display: block;
+  margin: 18px auto 0;
+}
+
+.portal-load-more:disabled {
+  opacity: 0.6;
 }
 
 .portal-detail-backdrop {
@@ -5794,6 +5804,7 @@ html[data-theme="dark"] .portal-detail-numbers article {
 
 html[data-theme="dark"] .library-confirm button:not(.danger),
 html[data-theme="dark"] .portal-library-inline-error button,
+html[data-theme="dark"] .portal-load-more,
 html[data-theme="dark"] .portal-detail-error button {
   border-color: rgba(141, 108, 255, 0.3);
   color: #cfc6ff;

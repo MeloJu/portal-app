@@ -205,6 +205,21 @@ describe("PortalsSection", () => {
     expect(await screen.findByText("Copiado")).toBeInTheDocument();
   });
 
+  it("carregar mais busca a próxima página e soma os cards", async () => {
+    const first = Array.from({ length: 20 }, (_, i) => makeLink({ code: `p${i}`, title: `Portal ${i}` }));
+    const fetchMock = mockFetch((url) =>
+      url.includes("page=1") ? page([makeLink({ code: "p20", title: "Portal 20" })], 21, 1) : page(first, 21),
+    );
+    render(<PortalsSection />);
+    await screen.findByText("Portal 0");
+    expect(screen.getAllByRole("article")).toHaveLength(20);
+    await userEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
+    expect(await screen.findByText("Portal 20")).toBeInTheDocument();
+    expect(screen.getAllByRole("article")).toHaveLength(21);
+    expect(calls(fetchMock)).toContain("GET /api/links?page=1&size=20");
+    expect(screen.queryByRole("button", { name: "Carregar mais" })).not.toBeInTheDocument();
+  });
+
   it("criar um portal pelo Novo portal recarrega a lista", async () => {
     const fetchMock = mockFetch((url, init) =>
       init.method === "POST" ? json(makeLink({ code: "novo" }), 201) : page([makeLink()]),

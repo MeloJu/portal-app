@@ -37,6 +37,13 @@ function renderDashboard() {
 const NO_EXTRAS = { title: null, maxTravels: null };
 const linksPage = (items: unknown[] = []) =>
   new Response(JSON.stringify({ items, page: 0, totalItems: items.length }), { status: 200 });
+const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+const protectionSummary = { blockedThreats: 0, verifiedDestinations: 0, byReason: {} };
+const apiResponse = (url: string, items: unknown[] = []) => {
+  if (url.startsWith("/api/protection/summary")) return json(protectionSummary);
+  if (url.startsWith("/api/protection/events")) return json([]);
+  return linksPage(items);
+};
 const recentLink = {
   code: "orbit",
   shortUrl: "https://lumi.example/orbit",
@@ -54,7 +61,7 @@ describe("Dashboard", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(() => Promise.resolve(linksPage())),
+      vi.fn((url: string) => Promise.resolve(apiResponse(url))),
     );
   });
 
@@ -78,7 +85,7 @@ describe("Dashboard", () => {
   it("portais recentes vêm da API, sem mock", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(() => Promise.resolve(linksPage([recentLink]))),
+      vi.fn((url: string) => Promise.resolve(apiResponse(url, [recentLink]))),
     );
     renderDashboard();
     expect(await screen.findByText("Evento Orbit Real")).toBeInTheDocument();

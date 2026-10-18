@@ -3,9 +3,10 @@ import { useNavigate, useRouteLoaderData } from "react-router";
 import { logout, type User } from "../api/auth";
 import lumiGuardian from "../assets/lumi-guardian.png";
 import lumiLogo from "../assets/lumi-logo-v2.png";
+import AchievementsSection from "./components/AchievementsSection";
 import CreatePortalForm from "./components/CreatePortalForm";
-import RecentPortals from "./components/RecentPortals";
 import PortalsSection from "./components/PortalsSection";
+import RecentPortals from "./components/RecentPortals";
 import { OrbitStation, StatsGrid, TravelFlowPanel } from "./components/OverviewPanels";
 import ProtectionSection from "./components/ProtectionSection";
 import RevealDestinationPanel from "./components/RevealDestinationPanel";
@@ -32,17 +33,6 @@ const pageHeadings: Record<string, [string, string]> = {
   Conquistas: ["DIÁRIO DE CONQUISTAS", "Cada viagem merece ser celebrada"],
   Configurações: ["AJUSTES DA ESTAÇÃO", "Seu universo, do seu jeito"],
 };
-
-const achievements = [
-  { title: "Primeiro portal", description: "Você abriu seu primeiro portal digital.", progress: 100, unlocked: true, detail: "Desbloqueada em 02 Mai", tone: "violet", icon: icons.portal },
-  { title: "Primeiro clique", description: "A primeira viagem atravessou um dos seus links.", progress: 100, unlocked: true, detail: "Desbloqueada em 02 Mai", tone: "cyan", icon: icons.link },
-  { title: "Rota popular", description: "Um portal alcançou 100 viagens.", progress: 100, unlocked: true, detail: "Desbloqueada em 05 Mai", tone: "blue", icon: icons.chart },
-  { title: "Guardião atento", description: "A Lumi bloqueou sua primeira ameaça.", progress: 100, unlocked: true, detail: "Desbloqueada em 06 Mai", tone: "indigo", icon: icons.shield },
-  { title: "Exploradora orbital", description: "Crie 10 portais diferentes.", progress: 70, unlocked: false, detail: "7 de 10 portais", tone: "violet", icon: icons.portal },
-  { title: "Mil viajantes", description: "Alcance 1.000 viagens em um único portal.", progress: 84, unlocked: false, detail: "842 de 1.000 viagens", tone: "cyan", icon: icons.chart },
-  { title: "Constelação global", description: "Receba cliques de 10 países.", progress: 60, unlocked: false, detail: "6 de 10 países", tone: "blue", icon: icons.link },
-  { title: "Mestre dos portais", description: "Mantenha 25 portais ativos ao mesmo tempo.", progress: 96, unlocked: false, detail: "24 de 25 portais", tone: "indigo", icon: icons.trophy },
-];
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -293,58 +283,7 @@ export default function Dashboard() {
 
         {active === "Proteção" && <ProtectionSection />}
 
-        {active === "Conquistas" && (
-          <section className="page-content achievements-page">
-            <article className="achievements-hero">
-              <div className="achievement-emblem">
-                <div className="emblem-orbit"><i /></div>
-                <span>{icons.trophy}</span>
-              </div>
-              <div className="achievement-rank">
-                <span>NÍVEL DE EXPLORADORA</span>
-                <h2>Cartógrafa de Portais</h2>
-                <p>Você já desbloqueou 4 de 8 conquistas nesta constelação.</p>
-                <div className="rank-progress"><i style={{ width: "50%" }} /></div>
-              </div>
-              <div className="achievement-score">
-                <span>PONTOS ESTELARES</span>
-                <strong>1.480</strong>
-                <b>+240 esta semana</b>
-              </div>
-            </article>
-
-            <div className="achievement-summary">
-              <article><span>{icons.trophy}</span><div><strong>4</strong><small>Desbloqueadas</small></div></article>
-              <article><span>{icons.portal}</span><div><strong>4</strong><small>Em progresso</small></div></article>
-              <article><span>{icons.spark}</span><div><strong>50%</strong><small>Da constelação</small></div></article>
-            </div>
-
-            <div className="achievements-heading">
-              <div><span>CONSTELAÇÃO ATUAL</span><h2>Marcos da sua jornada</h2></div>
-              <button type="button">Todas as conquistas {icons.arrow}</button>
-            </div>
-
-            <div className="achievements-grid">
-              {achievements.map((achievement) => (
-                <article className={`achievement-card ${achievement.unlocked ? "unlocked" : "locked"}`} key={achievement.title}>
-                  <div className={`achievement-icon ${achievement.tone}`}>
-                    <div className="achievement-icon-orbit"><i /></div>
-                    <span>{achievement.icon}</span>
-                  </div>
-                  <div className="achievement-state">
-                    {achievement.unlocked ? <span><i /> CONQUISTADA</span> : <span>EM PROGRESSO</span>}
-                  </div>
-                  <h3>{achievement.title}</h3>
-                  <p>{achievement.description}</p>
-                  <div className="achievement-progress">
-                    <div><i style={{ width: `${achievement.progress}%` }} /></div>
-                    <span>{achievement.detail}</span>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
+        {active === "Conquistas" && <AchievementsSection />}
 
         {active === "Configurações" && (
           <section className="page-content settings-layout">

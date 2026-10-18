@@ -42,6 +42,10 @@ const protectionSummary = { blockedThreats: 0, verifiedDestinations: 0, byReason
 const apiResponse = (url: string, items: unknown[] = []) => {
   if (url.startsWith("/api/protection/summary")) return json(protectionSummary);
   if (url.startsWith("/api/protection/events")) return json([]);
+  if (url.startsWith("/api/dashboard/summary")) {
+    return json({ activeLinks: 0, totalTravels: 0, travelsChangePct: null, blockedThreats: 0 });
+  }
+  if (url.startsWith("/api/dashboard/countries")) return json([]);
   return linksPage(items);
 };
 const recentLink = {

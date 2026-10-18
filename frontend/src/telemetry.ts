@@ -17,6 +17,13 @@ import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 
 export const OTLP_TRACES_PATH = "/otlp/v1/traces";
 
+/**
+ * Intervalo entre envios de lotes de spans. O padrão do SDK (5 s) perde os spans de quem sai da página antes do
+ * próximo envio, e o fluxo principal é justamente esse: abrir um link curto e seguir para o destino. Com 1 s, só
+ * se perde o que acontecer no último segundo antes de sair. Custo: no máximo um POST por segundo com atividade.
+ */
+export const EXPORT_DELAY_MS = 1000;
+
 /** O envio dos próprios spans não vira span (senão cada exportação geraria outra, em loop). */
 export const IGNORED_URLS = [/\/otlp\//];
 
@@ -36,7 +43,7 @@ export function startTelemetry(): void {
     const exporter = new OTLPTraceExporter({ url: new URL(OTLP_TRACES_PATH, window.location.origin).toString() });
     const provider = new WebTracerProvider({
       resource: resourceFromAttributes({ [ATTR_SERVICE_NAME]: "l2-frontend" }),
-      spanProcessors: [new BatchSpanProcessor(exporter)],
+      spanProcessors: [new BatchSpanProcessor(exporter, { scheduledDelayMillis: EXPORT_DELAY_MS })],
     });
     provider.register();
     registerInstrumentations({ instrumentations: [new FetchInstrumentation({ ignoreUrls: IGNORED_URLS })] });

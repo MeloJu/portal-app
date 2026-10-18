@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { IGNORED_URLS, OTLP_TRACES_PATH, startTelemetry, telemetryEnabled } from "./telemetry";
+import mainSource from "./main.tsx?raw";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -32,5 +33,12 @@ describe("telemetry", () => {
     const headers = new Headers(init?.headers);
     // W3C trace context: versão-traceId(32 hex)-spanId(16 hex)-flags
     expect(headers.get("traceparent")).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$/);
+  });
+
+  // Regressão real: com a telemetria ligada no corpo do main.tsx, o primeiro /api/me (disparado pelo router na
+  // importação do App) saía sem traceparent. A ordem dos imports é o que garante a cobertura.
+  it("main.tsx importa a telemetria antes de qualquer outro módulo", () => {
+    const firstImport = mainSource.split(/\r?\n/).find((line) => line.startsWith("import "));
+    expect(firstImport).toBe('import "./telemetry-init";');
   });
 });

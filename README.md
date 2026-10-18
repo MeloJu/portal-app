@@ -125,6 +125,22 @@ As tags são `sha-<7 primeiros caracteres do commit>` (imutável, é a que vai p
 
 **Deploy (GitOps):** depois de publicar as três imagens de um push em `develop`, o workflow abre um PR em [`portal-gitops`](https://github.com/MeloJu/portal-gitops) trocando a tag em `apps/l2/overlays/local/kustomization.yaml`, com **auto-merge**: ele entra sozinho quando os checks de lá passam, e o ArgoCD atualiza o cluster. Nenhum job daqui fala com o cluster, e nada pula a proteção de branch do `portal-gitops`. O PR é aberto com o secret `GITOPS_TOKEN`, um token fine-grained com acesso só àquele repositório.
 
+### Acompanhar um deploy
+
+Depois de um merge na `develop`:
+
+1. **Actions → CI**: os testes rodam primeiro; o job `images` só começa se todos passarem.
+2. **GHCR**: as três imagens aparecem com a tag `sha-<7 primeiros caracteres do commit>`.
+3. **portal-gitops**: o workflow abre o PR `chore(release): portal-app sha-…` com auto-merge; ele entra quando os checks de lá passam.
+4. **ArgoCD** troca as imagens do overlay `local`. No cluster local:
+
+```bash
+kubectl -n argocd get applications            # l2-local: Synced / Healthy
+kubectl -n l2 get deploy -o wide              # a coluna IMAGES mostra a tag nova
+```
+
+Se o PR de bump não aparecer, o erro costuma estar no secret `GITOPS_TOKEN`: ele precisa de *Contents* e *Pull requests* em *Read and write* **só** no `portal-gitops`.
+
 ### Construir e executar localmente
 
 ```bash

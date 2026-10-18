@@ -29,7 +29,8 @@ jobs:
       contents: read
       packages: write
     strategy:
-      fail-fast: true
+      # Cada imagem escaneia até o fim e reporta o próprio resultado; o bump continua exigindo as três.
+      fail-fast: false
       matrix:
         service: [backend, frontend, tools-api]
     outputs:

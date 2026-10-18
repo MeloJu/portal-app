@@ -40,3 +40,13 @@ docker run -p 8080:8080 -e TOOLS_API_URL=http://tools-api:3001 -e API_URL=http:/
 - `GET /healthz` responde `ok`, para probe do Kubernetes.
 - As imagens estão no Git LFS: rode `git lfs pull` antes do build, senão a imagem leva os ponteiros no lugar dos PNG.
 - Configuração do nginx em `docker/default.conf.template`.
+
+## Telemetria (OpenTelemetry)
+
+`src/telemetry.ts` liga o OpenTelemetry no browser: cada `fetch` vira um span e manda o `traceparent` para a API,
+então no Tempo o trace começa no navegador e segue por Traefik → l2-api → Postgres. Os spans vão para
+`/otlp/v1/traces`, na mesma origem (sem CORS).
+
+- Ligado no build de produção (o que roda no cluster); desligado no `npm run dev`, porque o Vite não tem `/otlp`.
+- `VITE_OTEL=on` ou `VITE_OTEL=off` força qualquer um dos dois.
+- Se algo falhar ao iniciar, só os traces ficam desligados: o app segue normal.

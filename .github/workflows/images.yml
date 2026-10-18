@@ -1,0 +1,167 @@
+name: Images
+
+# Constrói, escaneia e publica as três imagens no GHCR e propõe a tag nova ao portal-gitops.
+# Nada aqui toca o cluster: o ArgoCD vê o merge no portal-gitops e faz o deploy.
+#
+# É chamado pelo ci.yml DEPOIS de todos os testes passarem (`needs`): imagem de commit com teste
+# vermelho nunca é publicada.
+#
+#   pull request      -> build + Trivy, sem publicar
+#   push em develop   -> publica e abre PR de bump em portal-gitops (apps/l2/overlays/local),
+#                        com auto-merge: entra sozinho quando os checks de lá passam
+#   push em main      -> publica; o bump do overlay de produção entra quando o ambiente existir
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_PREFIX: ghcr.io/meloju/portal-app
+
+jobs:
+  image:
+    name: Imagem ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      # Cada imagem escaneia até o fim e reporta o próprio resultado; o bump continua exigindo as três.
+      fail-fast: false
+      matrix:
+        service: [backend, frontend, tools-api]
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # As imagens do frontend (mascote, logo) são PNG em Git LFS.
+          lfs: true
+
+      # Tag imutável por commit; o mesmo valor vai para o portal-gitops.
+      - id: tag
+        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}
+          tags: |
+            type=raw,value=${{ steps.tag.outputs.tag }}
+            type=ref,event=branch
+            type=ref,event=pr
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Constrói sem publicar para o Trivy poder barrar antes do push.
+      - name: Build (local)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.service }}
+          load: true
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Trivy barra CRITICAL com correção disponível
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:${{ steps.tag.outputs.tag }}
+          scanners: vuln
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
+      - name: Login no GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publica no GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+
+  bump:
+    name: PR de bump no portal-gitops
+    # Só depois das TRÊS imagens publicadas: o portal-gitops nunca aponta para tag que não existe.
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Dois bumps seguidos não podem disputar o mesmo arquivo.
+    concurrency:
+      group: gitops-bump
+      cancel-in-progress: false
+    env:
+      TAG: ${{ needs.image.outputs.tag }}
+      OVERLAY: apps/l2/overlays/local/kustomization.yaml
+      # Token fine-grained com Contents + Pull requests (write) SÓ no portal-gitops. Um PR aberto
+      # com ele dispara o CI de lá (com o GITHUB_TOKEN daqui não dispararia).
+      GH_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: MeloJu/portal-gitops
+          ref: develop
+          token: ${{ secrets.GITOPS_TOKEN }}
+
+      # Tag (legível) + digest (o que o runtime usa). A tag é imutável por convenção, mas o registro aceitaria
+      # sobrescrevê-la; o digest identifica o conteúdo, então o cluster roda exatamente o que o Trivy escaneou.
+      # O Kustomize gera `imagem:sha-xxxxxxx@sha256:...`.
+      - name: Atualiza tag e digest no overlay local
+        run: |
+          for svc in backend frontend tools-api; do
+            image="${IMAGE_PREFIX}-${svc}"
+            digest="$(docker buildx imagetools inspect "${image}:${TAG}" --format '{{json .Manifest}}' | jq -r .digest)"
+            case "$digest" in sha256:*) ;; *) echo "::error::digest inválido para ${image}:${TAG}: ${digest}"; exit 1 ;; esac
+            echo "${image}:${TAG} -> ${digest}"
+            name="$image" digest="$digest" yq -i \
+              '(.images[] | select(.name == strenv(name))) |= (.newTag = strenv(TAG) | .digest = strenv(digest))' "$OVERLAY"
+          done
+          git diff --stat
+
+      # Nada pula a proteção da develop: o bump é um PR como qualquer outro, valida no
+      # pr-validate de lá e só entra (auto-merge) com os checks verdes.
+      - name: Abre o PR com auto-merge
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          if git diff --quiet; then
+            echo "Tags já estavam em ${TAG}; nada a propor."
+            exit 0
+          fi
+          branch="chore/bump-portal-app-${TAG}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git commit -am "chore(release): portal-app ${TAG}" \
+            -m "Origem: MeloJu/portal-app@${SOURCE_SHA}" \
+            -m "Run: ${RUN_URL}"
+          git push origin "$branch"
+          {
+            echo "Bump automático das três imagens para \`${TAG}\` no overlay \`local\`."
+            echo
+            echo "- origem: MeloJu/portal-app@${SOURCE_SHA}"
+            echo "- imagens publicadas e escaneadas (Trivy): ${RUN_URL}"
+            echo
+            echo "Entra sozinho (auto-merge) quando os checks deste repositório passarem."
+          } > pr-body.md
+          gh pr create --base develop --head "$branch" \
+            --title "chore(release): portal-app ${TAG}" --body-file pr-body.md
+          gh pr merge "$branch" --auto --squash --delete-branch

@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log
+.env
+.env.*
+!.env.example
+coverage
+*.test.ts
+vitest.config.ts
+tsconfig.json
+Dockerfile
+.dockerignore
+docker

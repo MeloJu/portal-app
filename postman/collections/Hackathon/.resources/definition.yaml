@@ -1,0 +1,7 @@
+$kind: collection
+auth:
+  - id: 8b42cbb9-31c4-43d1-8901-27571fdbdf2e
+    type: oauth2
+    name: OAuth 2.0
+    credentials:
+      addTokenTo: header

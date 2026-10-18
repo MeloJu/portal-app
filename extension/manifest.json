@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Lumi Links — verificação",
+  "version": "0.1.0",
+  "description": "Depois que você resolve o captcha do bypass.city dentro da Lumi, leva o link revelado direto para a análise.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://bypass.city/*"
+      ],
+      "js": [
+        "bypass-result.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "http://localhost:5173/*"
+      ],
+      "js": [
+        "lumi-bridge.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "lumi-links@lumi.local",
+      "strict_min_version": "121.0"
+    }
+  },
+  "host_permissions": [
+    "https://bypass.city/*",
+    "http://localhost:5173/*"
+  ]
+}

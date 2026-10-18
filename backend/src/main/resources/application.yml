@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: l2-api
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+# Base publica dos links e chave da sessao: sempre do ambiente, nunca com default.
+app:
+  public-base-url: ${PUBLIC_BASE_URL}
+  jwt:
+    secret: ${JWT_SECRET}
+    ttl: 8h
+  session:
+    secure-cookie: ${SESSION_COOKIE_SECURE:true}
+  # GeoLite2-Country.mmdb da MaxMind, fora do Git (backend/docs/GEOIP.md). Vazio = GeoIP desligado.
+  geoip:
+    database-path: ${GEOIP_DB_PATH:}
+
+# Atras do Traefik o IP do visitante vem em X-Forwarded-For; sem isso todo IP seria o do proxy
+# e nenhuma Viagem teria pais (docs/SECURITY.md, secao 11). O IP so e lido em memoria.
+server:
+  forward-headers-strategy: native
+
+# Actuator em porta separada: o Ingress so roteia a 8080 (docs/SECURITY.md, secao 7).
+management:
+  server:
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method

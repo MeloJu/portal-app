@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:8080/api/dashboard/top-links?limit=5
+method: GET
+order: 15000

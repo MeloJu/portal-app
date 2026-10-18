@@ -1,0 +1,65 @@
+# Template do nginx: a imagem troca ${TOOLS_API_URL} e ${API_URL} pelos valores das variáveis ao iniciar.
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    # Atenção: um add_header dentro de um location anula os do server; por isso cada location repete os dois.
+
+    # Mesmo papel do proxy do Vite em desenvolvimento.
+    location /tools/ {
+        proxy_pass ${TOOLS_API_URL};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # O unshorten pode levar até ~30 s em link com anúncio.
+        proxy_read_timeout 45s;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+    }
+
+    # API Spring na mesma origem do app: o cookie de sessão funciona sem CORS (mesmo papel do proxy do Vite).
+    location /api/ {
+        proxy_pass ${API_URL};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+    }
+
+    # Redirect 302 direto do backend (robôs e teste de carga). A barra final evita levar /rocket (um portal) à API.
+    location /r/ {
+        proxy_pass ${API_URL};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+    }
+
+    # Arquivos com hash no nome: podem ficar em cache para sempre.
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        try_files $uri =404;
+    }
+
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # React Router: qualquer rota do app (/login, /dashboard, /{code} da Travessia) cai no index.html.
+    location / {
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        try_files $uri /index.html;
+    }
+}

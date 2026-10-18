@@ -9,7 +9,11 @@ ENV NODE_ENV=production \
     BROWSER_CHANNEL=chromium
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+# Depois de instalar as dependências o npm não serve para mais nada: a app sobe com `node`.
+# O npm global da imagem base traz o pacote `tar` com CRITICAL no Trivy (CVE-2026-59873);
+# removê-lo tira a vulnerabilidade e diminui a superfície de ataque.
+RUN npm ci --omit=dev \
+ && rm -rf /usr/lib/node_modules/npm /usr/bin/npm /usr/bin/npx
 
 COPY src ./src
 

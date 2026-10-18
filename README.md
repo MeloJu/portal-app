@@ -109,17 +109,21 @@ Os scripts também podem encaminhar argumentos adicionais ao Maven, desde que im
 ./scripts/dev-backend.sh -Dspring-boot.run.profiles=...
 ```
 
-## Imagem Docker do backend
+## Imagens Docker e deploy
 
-O CI publica imagens em `ghcr.io/meloju/portal-app/backend` a cada push em `main` ou `develop`, conforme o workflow `publish-backend.yml`.
+O workflow `images.yml` constrói as três imagens, escaneia com o Trivy (CRITICAL com correção disponível barra) e publica no GHCR:
 
-Em pull requests, a imagem é construída para validar o Dockerfile, sem publicação.
+- `ghcr.io/meloju/portal-app-backend`
+- `ghcr.io/meloju/portal-app-frontend`
+- `ghcr.io/meloju/portal-app-tools-api`
 
-As tags são:
+Em pull requests as imagens só são construídas e escaneadas, sem publicação.
 
-- Nome da branch.
-- `sha-<commit>`.
-- `latest`, somente em `main`.
+As tags são `sha-<7 primeiros caracteres do commit>` (imutável, é a que vai para o cluster) e o nome da branch.
+
+**Ordem:** o `ci.yml` chama o `images.yml` só depois de **todos** os testes passarem, então nada com teste vermelho é publicado.
+
+**Deploy (GitOps):** depois de publicar as três imagens de um push em `develop`, o workflow abre um PR em [`portal-gitops`](https://github.com/MeloJu/portal-gitops) trocando a tag em `apps/l2/overlays/local/kustomization.yaml`, com **auto-merge**: ele entra sozinho quando os checks de lá passam, e o ArgoCD atualiza o cluster. Nenhum job daqui fala com o cluster, e nada pula a proteção de branch do `portal-gitops`. O PR é aberto com o secret `GITOPS_TOKEN`, um token fine-grained com acesso só àquele repositório.
 
 ### Construir e executar localmente
 

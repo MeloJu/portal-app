@@ -120,11 +120,18 @@ jobs:
           ref: develop
           token: ${{ secrets.GITOPS_TOKEN }}
 
-      - name: Atualiza as tags no overlay local
+      # Tag (legível) + digest (o que o runtime usa). A tag é imutável por convenção, mas o registro aceitaria
+      # sobrescrevê-la; o digest identifica o conteúdo, então o cluster roda exatamente o que o Trivy escaneou.
+      # O Kustomize gera `imagem:sha-xxxxxxx@sha256:...`.
+      - name: Atualiza tag e digest no overlay local
         run: |
           for svc in backend frontend tools-api; do
-            name="${IMAGE_PREFIX}-${svc}" yq -i \
-              '(.images[] | select(.name == strenv(name))).newTag = strenv(TAG)' "$OVERLAY"
+            image="${IMAGE_PREFIX}-${svc}"
+            digest="$(docker buildx imagetools inspect "${image}:${TAG}" --format '{{json .Manifest}}' | jq -r .digest)"
+            case "$digest" in sha256:*) ;; *) echo "::error::digest inválido para ${image}:${TAG}: ${digest}"; exit 1 ;; esac
+            echo "${image}:${TAG} -> ${digest}"
+            name="$image" digest="$digest" yq -i \
+              '(.images[] | select(.name == strenv(name))) |= (.newTag = strenv(TAG) | .digest = strenv(digest))' "$OVERLAY"
           done
           git diff --stat
 

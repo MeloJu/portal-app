@@ -109,7 +109,7 @@ export default function CreatePortalForm({ minOpeningMs = 1400, onCreated }: Pro
           />
         </label>
         <label className="slug-field">
-          <span>l2.to/</span>
+          <span>{window.location.host}/</span>
           <input
             maxLength={32}
             onChange={(event) => setSlug(event.target.value)}

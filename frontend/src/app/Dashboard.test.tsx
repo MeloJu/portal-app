@@ -238,4 +238,23 @@ describe("Dashboard", () => {
     expect(await screen.findByText("Bruno Costa")).toBeInTheDocument();
     expect(screen.getAllByText("BC").length).toBeGreaterThan(0);
   });
+
+  it("saúda o usuário da sessão pelo primeiro nome e preenche o e-mail nas configurações", async () => {
+    const router = createMemoryRouter(
+      [
+        {
+          id: "dashboard",
+          path: "/dashboard",
+          loader: () => ({ id: "u1", name: "Bruno Costa", email: "b@lumi.dev" }),
+          Component: Dashboard,
+        },
+      ],
+      { initialEntries: ["/dashboard"] },
+    );
+    render(<RouterProvider router={router} />);
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Olá, Bruno. Pronta para decolar?");
+    await userEvent.click(within(nav()).getByRole("button", { name: /configurações/i }));
+    expect(screen.getByDisplayValue("b@lumi.dev")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Estação de Bruno")).toBeInTheDocument();
+  });
 });

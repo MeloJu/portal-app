@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { IGNORED_URLS, OTLP_TRACES_PATH, startTelemetry, telemetryEnabled } from "./telemetry";
+import { EXPORT_DELAY_MS, IGNORED_URLS, OTLP_TRACES_PATH, startTelemetry, telemetryEnabled } from "./telemetry";
 import mainSource from "./main.tsx?raw";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -40,5 +40,10 @@ describe("telemetry", () => {
   it("main.tsx importa a telemetria antes de qualquer outro módulo", () => {
     const firstImport = mainSource.split(/\r?\n/).find((line) => line.startsWith("import "));
     expect(firstImport).toBe('import "./telemetry-init";');
+  });
+  // Quem abre um link curto e segue para o destino sai da página em poucos segundos: com o padrão de 5 s do SDK,
+  // o span desse clique se perdia (visto num Chromium real contra o cluster).
+  it("envia os spans em no máximo 1 s, para não perder o clique de quem sai da página", () => {
+    expect(EXPORT_DELAY_MS).toBeLessThanOrEqual(1000);
   });
 });

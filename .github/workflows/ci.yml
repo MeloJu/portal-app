@@ -148,3 +148,13 @@ jobs:
           name: playwright-traces
           path: frontend/test-results/
           retention-days: 7
+
+  # Publica as imagens só quando TODOS os testes acima passaram. Em PR o workflow chamado só
+  # constrói e escaneia; em push na develop publica e propõe a tag ao portal-gitops.
+  images:
+    needs: [frontend, tools-api, backend, gitleaks, config-secrets, e2e]
+    uses: ./.github/workflows/images.yml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit

@@ -171,7 +171,8 @@ O contrato está em [`docs/openapi.yaml`](docs/openapi.yaml) e a documentação 
 cd backend && docker build -t l2-api:dev .
 docker run --rm -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp \
   -e DB_URL=jdbc:postgresql://host.docker.internal:5432/lumi -e DB_USER=lumi -e DB_PASSWORD=lumi \
-  -e PUBLIC_BASE_URL=http://localhost:8080 -e JWT_SECRET="$(openssl rand -base64 32)" \n  -e APP_CODE_PEPPER="$(openssl rand -base64 32)" l2-api:dev
+  -e PUBLIC_BASE_URL=http://localhost:8080 -e JWT_SECRET="$(openssl rand -base64 32)" \
+  -e APP_CODE_PEPPER="$(openssl rand -base64 32)" l2-api:dev
 curl http://localhost:8081/actuator/health      # {"status":"UP"}
 ```
 
@@ -198,9 +199,10 @@ para o cluster) e o nome da branch.
 | `MAIL_FROM` | remetente | com e-mail ligado |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | servidor SMTP | com e-mail ligado |
 
-No cluster, `APP_CODE_PEPPER` e `SMTP_*` (junto de `JWT_SECRET`) vivem em um Secret do `portal-gitops`
-(`apps/l2`), selado, e entram no Deployment do backend por `envFrom`/`secretKeyRef`. Esses valores
-**não vão ao Git** deste repositório: aqui só existe o `.env.example`, com valores vazios.
+No cluster, `APP_CODE_PEPPER`, `SMTP_USER` e `SMTP_PASSWORD` entram no Secret `l2-secrets` do
+`portal-gitops` (`apps/l2`), selado, e chegam ao Deployment da API por `secretKeyRef`, chave a chave.
+`MAIL_ENABLED`, `MAIL_FROM`, `SMTP_HOST` e `SMTP_PORT` não são secretos e vão no ConfigMap `l2-config`.
+Esses valores **não vão ao Git** deste repositório: aqui só existe o `.env.example`, com valores vazios.
 
 ### Do commit ao cluster
 

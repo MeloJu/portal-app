@@ -303,7 +303,7 @@ describe("Dashboard", () => {
       renderWithUser(unverified, { ...unverified, emailVerified: true });
       await userEvent.click(await screen.findByRole("button", { name: /já verifiquei/i }));
       await vi.waitFor(() => expect(screen.queryByText(/enviamos um link/i)).not.toBeInTheDocument());
-      expect(screen.getByRole("heading", { level: 1 })).toHaveFocus();
+      await vi.waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveFocus());
     });
 
     it("403 EMAIL_NOT_VERIFIED na criação revalida o usuário e passa a bloquear", async () => {

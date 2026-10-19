@@ -8,6 +8,7 @@ import org.springframework.boot.validation.autoconfigure.ValidationAutoConfigura
 import org.springframework.context.annotation.Configuration;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -131,6 +132,53 @@ class AppPropertiesTest {
 					assertThat(mail.enabled()).isTrue();
 					assertThat(mail.from()).isEqualTo("lumi@example.com");
 				});
+	}
+
+	@Test
+	void codesDefaultToTenMinutesFiveAttemptsSixtySecondsAndFivePerHour() {
+		runner.withPropertyValues(
+				"app.public-base-url=https://l2.to",
+				"app.jwt.secret=" + STRONG_SECRET,
+				"app.codes.pepper=" + STRONG_PEPPER)
+				.run(context -> {
+					AppProperties.Codes codes = context.getBean(AppProperties.class).codes();
+					assertThat(codes.ttl()).isEqualTo(Duration.ofMinutes(10));
+					assertThat(codes.maxAttempts()).isEqualTo(5);
+					assertThat(codes.resendCooldown()).isEqualTo(Duration.ofSeconds(60));
+					assertThat(codes.maxPerHour()).isEqualTo(5);
+				});
+	}
+
+	@Test
+	void codesBindOverrides() {
+		runner.withPropertyValues(
+				"app.public-base-url=https://l2.to",
+				"app.jwt.secret=" + STRONG_SECRET,
+				"app.codes.pepper=" + STRONG_PEPPER,
+				"app.codes.ttl=15m",
+				"app.codes.max-attempts=3",
+				"app.codes.resend-cooldown=30s",
+				"app.codes.max-per-hour=10")
+				.run(context -> {
+					AppProperties.Codes codes = context.getBean(AppProperties.class).codes();
+					assertThat(codes.ttl()).isEqualTo(Duration.ofMinutes(15));
+					assertThat(codes.maxAttempts()).isEqualTo(3);
+					assertThat(codes.resendCooldown()).isEqualTo(Duration.ofSeconds(30));
+					assertThat(codes.maxPerHour()).isEqualTo(10);
+				});
+	}
+
+	@Test
+	void failsWhenCodeLimitsAreInvalid() {
+		for (String invalid : new String[] { "app.codes.max-attempts=0", "app.codes.max-per-hour=0",
+				"app.codes.ttl=0s", "app.codes.resend-cooldown=-1s" }) {
+			runner.withPropertyValues(
+					"app.public-base-url=https://l2.to",
+					"app.jwt.secret=" + STRONG_SECRET,
+					"app.codes.pepper=" + STRONG_PEPPER,
+					invalid)
+					.run(context -> assertThat(context).hasFailed());
+		}
 	}
 
 	@Configuration(proxyBeanMethods = false)

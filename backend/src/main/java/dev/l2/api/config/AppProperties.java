@@ -104,11 +104,31 @@ public record AppProperties(
 
 	}
 
-	public record Codes(@NotBlank String pepper) {
+	public record Codes(
+
+			@NotBlank String pepper,
+
+			@DefaultValue("10m") @NotNull Duration ttl,
+
+			@DefaultValue("5") @Min(1) int maxAttempts,
+
+			@DefaultValue("60s") @NotNull Duration resendCooldown,
+
+			@DefaultValue("5") @Min(1) int maxPerHour) {
 
 		@AssertTrue(message = "deve ter no minimo 256 bits (openssl rand -base64 32)")
 		public boolean isPepperStrongEnough() {
 			return pepper != null && pepperBytes().length >= MINIMUM_SECRET_BYTES;
+		}
+
+		@AssertTrue(message = "ttl deve ser positivo")
+		public boolean isTtlPositive() {
+			return ttl != null && ttl.isPositive();
+		}
+
+		@AssertTrue(message = "resend-cooldown nao pode ser negativo")
+		public boolean isResendCooldownNotNegative() {
+			return resendCooldown != null && !resendCooldown.isNegative();
 		}
 
 		public byte[] pepperBytes() {

@@ -10,7 +10,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
@@ -52,7 +51,6 @@ public class AccountCode {
 	@Column(name = "used_at")
 	private Instant usedAt;
 
-	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
 
@@ -60,6 +58,12 @@ public class AccountCode {
 	}
 
 	public AccountCode(User user, AccountCodePurpose purpose, String codeHash, String newEmail, Instant expiresAt) {
+		this(user, purpose, codeHash, newEmail, expiresAt, Instant.now());
+	}
+
+	public AccountCode(User user, AccountCodePurpose purpose, String codeHash, String newEmail, Instant expiresAt,
+			Instant createdAt) {
+		this.createdAt = createdAt;
 		this.user = user;
 		this.purpose = purpose;
 		this.codeHash = codeHash;

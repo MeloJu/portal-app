@@ -92,10 +92,6 @@ export async function verifyEmail(token: string): Promise<void> {
   await request("/api/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) });
 }
 
-export async function resendVerification(): Promise<void> {
-  await request("/api/auth/resend-verification", { method: "POST" });
-}
-
 /** Usuário da sessão atual, ou null sem sessão. API fora do ar lança (a rota mostra a tela de estação fora do ar). */
 export async function currentUser(): Promise<User | null> {
   try {

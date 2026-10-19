@@ -1,6 +1,7 @@
 package dev.l2.api.web;
 
 import dev.l2.api.auth.EmailAlreadyUsedException;
+import dev.l2.api.auth.EmailNotVerifiedException;
 import dev.l2.api.auth.InvalidCredentialsException;
 import dev.l2.api.auth.verification.AlreadyVerifiedException;
 import dev.l2.api.auth.verification.ResendTooSoonException;
@@ -44,6 +45,11 @@ public class ApiExceptionHandler {
 	@ExceptionHandler(InvalidCredentialsException.class)
 	public ResponseEntity<ErrorResponse> onInvalidCredentials(InvalidCredentialsException exception) {
 		return body(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", exception.getMessage());
+	}
+
+	@ExceptionHandler(EmailNotVerifiedException.class)
+	public ResponseEntity<ErrorResponse> onEmailNotVerified(EmailNotVerifiedException exception) {
+		return body(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED", exception.getMessage());
 	}
 
 	@ExceptionHandler(InvalidLinkException.class)

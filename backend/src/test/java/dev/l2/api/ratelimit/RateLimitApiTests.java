@@ -1,7 +1,9 @@
 package dev.l2.api.ratelimit;
 
+import dev.l2.api.EmailVerification;
 import dev.l2.api.TestcontainersConfiguration;
 import dev.l2.api.auth.SessionCookie;
+import dev.l2.api.user.UserRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,9 @@ class RateLimitApiTests {
 
 	@Autowired
 	private MockMvc mvc;
+
+	@Autowired
+	private UserRepository users;
 
 	@Test
 	void blocksTheThirdLoginFromTheSameAddress() throws Exception {
@@ -159,6 +164,7 @@ class RateLimitApiTests {
 				.andReturn()
 				.getResponse()
 				.getCookie(SessionCookie.NAME);
+		EmailVerification.verify(this.users, email);
 		return new Session(email, cookie);
 	}
 

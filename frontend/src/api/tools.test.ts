@@ -45,6 +45,20 @@ describe("api/tools", () => {
     expect(err.code).toBe("NETWORK");
   });
 
+  it("unshorten e scan não enviam credenciais nem tocam em /api/me", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(reply(200, {})));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await unshorten("bit.ly/a");
+    await scan("bit.ly/a");
+
+    expect(fetchMock.mock.calls.map(([path]) => path)).toEqual(["/tools/unshorten", "/tools/scan"]);
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(init.credentials).toBeUndefined();
+      expect(Object.keys(init.headers)).toEqual(["content-type"]);
+    }
+  });
+
   it("tolera resposta de erro sem JSON", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<html>502</html>", { status: 502 })));
     const err = (await unshorten("a.com").catch((e) => e)) as ToolsError;

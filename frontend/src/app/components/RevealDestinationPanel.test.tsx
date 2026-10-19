@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeEach, vi } from "vitest";
 import * as tools from "../../api/tools";
 import RevealDestinationPanel from "./RevealDestinationPanel";
@@ -576,6 +577,39 @@ describe("RevealDestinationPanel", () => {
       expect(await screen.findByRole("alert")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /resolver aqui na lumi/i })).not.toBeInTheDocument();
     });
+  });
+
+  it("funciona com o usuário da sessão não verificado, sem depender de /api/me", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    unshorten.mockResolvedValue(resolved);
+    scan.mockResolvedValue({
+      url: resolved.finalUrl,
+      verdict: "clean",
+      stats,
+      permalink: "https://www.virustotal.com/gui/url/x",
+    });
+    const router = createMemoryRouter(
+      [
+        {
+          id: "dashboard",
+          path: "/dashboard",
+          loader: () => ({ id: "u1", name: "Ana", email: "ana@lumi.dev", emailVerified: false }),
+          Component: RevealDestinationPanel,
+        },
+      ],
+      { initialEntries: ["/dashboard"] },
+    );
+    render(<RouterProvider router={router} />);
+    await screen.findByLabelText(/link para revelar/i);
+    await reveal();
+    await userEvent.click(await screen.findByRole("button", { name: /analisar com a lumi/i }));
+
+    expect(await screen.findByText("Seguro")).toBeInTheDocument();
+    expect(unshorten).toHaveBeenCalledWith("bit.ly/abc", expect.any(AbortSignal));
+    expect(scan).toHaveBeenCalledWith(resolved.finalUrl, expect.any(AbortSignal));
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 
   it("mostra erro quando a análise falha", async () => {

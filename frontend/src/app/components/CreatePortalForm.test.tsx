@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "../../api/client";
 import * as api from "../../api/links";
 import CreatePortalForm from "./CreatePortalForm";
 
@@ -154,5 +155,43 @@ describe("CreatePortalForm", () => {
     await userEvent.click(screen.getByRole("button", { name: /criar portal/i }));
     expect(await screen.findByText(/portal aberto com sucesso/i)).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("com disabledReason desabilita o envio e mostra a razão perto do botão", async () => {
+    render(<CreatePortalForm disabledReason="Confirme seu e-mail para criar portais" minOpeningMs={0} />);
+    const button = screen.getByRole("button", { name: /criar portal/i });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription("Confirme seu e-mail para criar portais");
+    await userEvent.type(screen.getByPlaceholderText(/cole seu link longo/i), "exemplo.com{Enter}");
+    expect(createLink).not.toHaveBeenCalled();
+  });
+
+  it("sem disabledReason o botão fica habilitado e sem aviso", () => {
+    render(<CreatePortalForm minOpeningMs={0} />);
+    expect(screen.getByRole("button", { name: /criar portal/i })).toBeEnabled();
+    expect(screen.queryByText(/confirme seu e-mail/i)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["LinkError", new api.LinkError(403, "EMAIL_NOT_VERIFIED", "x")],
+    ["ApiError", new ApiError(403, "EMAIL_NOT_VERIFIED", "x")],
+  ])("trata 403 EMAIL_NOT_VERIFIED (%s): mostra a razão e pede revalidação", async (_name, error) => {
+    createLink.mockRejectedValue(error);
+    const onEmailNotVerified = vi.fn();
+    render(<CreatePortalForm minOpeningMs={0} onEmailNotVerified={onEmailNotVerified} />);
+    await fill("exemplo.com");
+    expect(await screen.findByText("Confirme seu e-mail para criar portais")).toBeInTheDocument();
+    expect(onEmailNotVerified).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: /criar portal/i })).toBeDisabled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("outro 403 continua sendo erro comum", async () => {
+    createLink.mockRejectedValue(new api.LinkError(403, "FORBIDDEN", "Sem permissão"));
+    const onEmailNotVerified = vi.fn();
+    render(<CreatePortalForm minOpeningMs={0} onEmailNotVerified={onEmailNotVerified} />);
+    await fill("exemplo.com");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Sem permissão");
+    expect(onEmailNotVerified).not.toHaveBeenCalled();
   });
 });

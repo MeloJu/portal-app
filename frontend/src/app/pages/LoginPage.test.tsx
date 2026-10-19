@@ -64,7 +64,7 @@ describe("LoginPage", () => {
   });
 
   it("faz login na API e navega para o dashboard", async () => {
-    login.mockResolvedValue({ id: "u1", name: "Ana", email: "ana@lumi.studio" });
+    login.mockResolvedValue({ id: "u1", name: "Ana", email: "ana@lumi.studio", emailVerified: true });
     const router = renderLogin();
     await fillAndSubmit();
     await waitFor(() => expect(router.state.location.pathname).toBe("/dashboard"));
@@ -100,7 +100,7 @@ describe("LoginPage", () => {
     });
 
     it("cadastra na API e navega para o dashboard", async () => {
-      register.mockResolvedValue({ id: "u1", name: "Ana", email: "ana@lumi.studio" });
+      register.mockResolvedValue({ id: "u1", name: "Ana", email: "ana@lumi.studio", emailVerified: true });
       const router = renderLogin();
       await openRegister();
       await fillRegister("Ana", "ana@lumi.studio", "segredo-grande");

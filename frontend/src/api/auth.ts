@@ -4,22 +4,37 @@
  */
 import { isOfflineResponse, OFFLINE_MESSAGE } from "./offline";
 
-export type User = { id: string; name: string; email: string };
+export type User = { id: string; name: string; email: string; emailVerified: boolean };
 
 export class AuthError extends Error {
   status: number;
   code: string;
+  retryAfterSeconds: number | null;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, retryAfterSeconds: number | null = null) {
     super(message);
     this.name = "AuthError";
     this.status = status;
     this.code = code;
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+
+  get isEmailAlreadyVerified() {
+    return this.status === 409;
+  }
+
+  get isRateLimited() {
+    return this.status === 429;
   }
 
   get isInvalidCredentials() {
     return this.status === 401;
   }
+}
+
+function parseRetryAfter(header: string | null): number | null {
+  const seconds = header ? Number(header) : NaN;
+  return Number.isInteger(seconds) && seconds > 0 ? seconds : null;
 }
 
 async function request(path: string, init: RequestInit = {}): Promise<Response> {
@@ -36,7 +51,12 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { code?: string; message?: string } | null;
     if (isOfflineResponse(res.status, body !== null)) throw new AuthError(res.status, "OFFLINE", OFFLINE_MESSAGE);
-    throw new AuthError(res.status, body?.code ?? "UNKNOWN", body?.message ?? "Algo deu errado. Tente novamente.");
+    throw new AuthError(
+      res.status,
+      body?.code ?? "UNKNOWN",
+      body?.message ?? "Algo deu errado. Tente novamente.",
+      res.status === 429 ? parseRetryAfter(res.headers.get("retry-after")) : null,
+    );
   }
   return res;
 }
@@ -50,6 +70,10 @@ export async function login(email: string, password: string): Promise<User> {
 export async function register(name: string, email: string, password: string): Promise<User> {
   const res = await request("/api/auth/register", { method: "POST", body: JSON.stringify({ name, email, password }) });
   return ((await res.json()) as { user: User }).user;
+}
+
+export async function resendVerification(): Promise<void> {
+  await request("/api/auth/resend-verification", { method: "POST" });
 }
 
 export async function logout(): Promise<void> {

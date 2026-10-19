@@ -13,7 +13,7 @@ vi.mock("../api/auth", async (importOriginal) => ({
 vi.mock("../api/travel", () => ({ travel: vi.fn() }));
 const currentUser = vi.mocked(auth.currentUser);
 const travel = vi.mocked(api.travel);
-const ana = { id: "u1", name: "Ana Martins", email: "ana@lumi.dev" };
+const ana = { id: "u1", name: "Ana Martins", email: "ana@lumi.dev", emailVerified: true };
 
 function go(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });

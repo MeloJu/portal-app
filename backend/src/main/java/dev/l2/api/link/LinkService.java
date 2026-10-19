@@ -1,6 +1,5 @@
 package dev.l2.api.link;
 
-import dev.l2.api.auth.InvalidCredentialsException;
 import dev.l2.api.link.LinkDtos.CreateLinkRequest;
 import dev.l2.api.metrics.L2Metrics;
 import dev.l2.api.security.ProtectionService;
@@ -52,7 +51,7 @@ public class LinkService {
 
 	@Transactional
 	public Link create(UUID ownerId, CreateLinkRequest request) {
-		User owner = this.users.findById(ownerId).orElseThrow(InvalidCredentialsException::new);
+		User owner = this.users.requireVerified(ownerId);
 		String code = resolveCode(ownerId, request.alias());
 		String targetUrl = normalize(ownerId, request.alias(), request.targetUrl());
 

@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useRouteLoaderData } from "react-router";
+import { useNavigate, useRevalidator, useRouteLoaderData } from "react-router";
 import { logout, type User } from "../api/auth";
 import lumiGuardian from "../assets/lumi-guardian.png";
 import lumiLogo from "../assets/lumi-logo-v2.png";
-import CreatePortalForm from "./components/CreatePortalForm";
+import CreatePortalForm, { EMAIL_NOT_VERIFIED_MESSAGE } from "./components/CreatePortalForm";
+import ChangeEmailFlow from "./components/ChangeEmailFlow";
+import ChangePasswordFlow from "./components/ChangePasswordFlow";
+import UnverifiedBanner from "./components/UnverifiedBanner";
 import RecentPortals from "./components/RecentPortals";
 import PortalsSection from "./components/PortalsSection";
 import { OrbitStation, StatsGrid, TravelFlowPanel } from "./components/OverviewPanels";
@@ -19,7 +22,6 @@ const navItems = [
   ["Revelar destino", icons.unlink],
   ["Viagens", icons.chart],
   ["Proteção", icons.shield],
-  ["Conquistas", icons.trophy],
   ["Configurações", icons.settings],
 ] as const;
 
@@ -49,6 +51,22 @@ export default function Dashboard() {
   const [overviewVersion, setOverviewVersion] = useState(0);
   const overview = useOverview(5000, 12, overviewVersion);
   const user = useRouteLoaderData("dashboard") as User | undefined;
+  const { revalidate } = useRevalidator();
+  const [settingsSection, setSettingsSection] = useState<"profile" | "security">("profile");
+  const isUnverified = Boolean(user) && !user?.emailVerified;
+  const hasNoPassword = user?.hasPassword === false;
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const wasUnverifiedRef = useRef(isUnverified);
+
+  useEffect(() => {
+    const bannerJustLeft = wasUnverifiedRef.current && !isUnverified;
+    wasUnverifiedRef.current = isUnverified;
+    const focused = document.activeElement;
+    const focusLost = !focused || focused === document.body || !document.body.contains(focused);
+    if (bannerJustLeft && focusLost) {
+      titleRef.current?.focus();
+    }
+  }, [isUnverified]);
   const userName = user?.name ?? "Exploradora";
   const firstName = userName.split(/\s+/).find(Boolean) ?? userName;
   const initials = userName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]!.toUpperCase()).join("") || "?";
@@ -202,10 +220,11 @@ export default function Dashboard() {
       </aside>
 
       <main className="main">
+        {user && isUnverified && <UnverifiedBanner email={user.email} onRevalidate={revalidate} />}
         <header className="topbar">
           <div>
             <p className="eyebrow">{pageEyebrow}</p>
-            <h1>{pageTitle}</h1>
+            <h1 ref={titleRef} tabIndex={-1}>{pageTitle}</h1>
           </div>
           <div className="top-actions">
             <span className="status"><i /> Todos os sistemas online</span>
@@ -270,7 +289,11 @@ export default function Dashboard() {
         </header>
 
         {active === "Visão geral" && (<>
-        <CreatePortalForm onCreated={() => setOverviewVersion((version) => version + 1)} />
+        <CreatePortalForm
+          disabledReason={isUnverified ? EMAIL_NOT_VERIFIED_MESSAGE : undefined}
+          onCreated={() => setOverviewVersion((version) => version + 1)}
+          onEmailNotVerified={revalidate}
+        />
 
         <StatsGrid overview={overview} />
 
@@ -349,20 +372,36 @@ export default function Dashboard() {
         {active === "Configurações" && (
           <section className="page-content settings-layout">
             <aside className="settings-menu">
-              <button className="selected" type="button">{icons.settings} Perfil e estação</button>
+              <button className={settingsSection === "profile" ? "selected" : undefined} onClick={() => setSettingsSection("profile")} type="button">{icons.settings} Perfil e estação</button>
               <button type="button">{icons.link} Domínios</button>
-              <button type="button">{icons.shield} Segurança</button>
+              <button aria-pressed={settingsSection === "security"} className={settingsSection === "security" ? "selected" : undefined} onClick={() => setSettingsSection("security")} type="button">{icons.shield} Segurança</button>
               <button type="button">{icons.chart} Plano e uso</button>
             </aside>
-            <div className="settings-panels">
+            {settingsSection === "security" && user && (
+              <div className="settings-panels">
+                <article className="settings-panel">
+                  <div className="settings-heading"><div><span>SEGURANÇA DA CONTA</span><h2>Senha de acesso</h2></div></div>
+                  {hasNoPassword ? (
+                    <p className="account-flow-hint">Sua conta entra com Google ou GitHub e não tem senha para trocar.</p>
+                  ) : (
+                    <ChangePasswordFlow currentEmail={user.email} disabled={isUnverified} onChanged={revalidate} />
+                  )}
+                </article>
+              </div>
+            )}
+            {settingsSection === "profile" && <div className="settings-panels">
               <article className="settings-panel">
                 <div className="settings-heading"><div><span>PERFIL DA EXPLORADORA</span><h2>Informações pessoais</h2></div><div className="settings-avatar">{initials}</div></div>
                 <div className="settings-fields">
                   <label><span>Nome</span><input defaultValue={userName} /></label>
-                  <label><span>E-mail</span><input defaultValue={user?.email ?? ""} type="email" /></label>
+                  <label><span>E-mail</span><input readOnly value={user?.email ?? ""} type="email" /></label>
                   <label><span>Nome da estação</span><input defaultValue={`Estação de ${firstName}`} /></label>
                   <label><span>Idioma</span><select defaultValue="pt-BR"><option value="pt-BR">Português (Brasil)</option><option value="en">English</option></select></label>
                 </div>
+                {user && hasNoPassword && (
+                  <p className="account-flow-hint">Para trocar o e-mail é preciso ter uma senha; contas com Google ou GitHub não têm.</p>
+                )}
+                {user && !hasNoPassword && <ChangeEmailFlow currentEmail={user.email} disabled={isUnverified} onChanged={revalidate} />}
                 <button className="save-button" type="button">Salvar alterações</button>
               </article>
               <article className="settings-panel preferences-panel">
@@ -376,7 +415,7 @@ export default function Dashboard() {
                   <button aria-pressed={autoShield} className={`toggle ${autoShield ? "on" : ""}`} onClick={() => setAutoShield(!autoShield)} type="button"><i /></button>
                 </div>
               </article>
-            </div>
+            </div>}
           </section>
         )}
 

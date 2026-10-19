@@ -13,6 +13,7 @@ security:
   - cookieAuth: []
 tags:
   - name: auth
+  - name: account
   - name: links
   - name: travel
   - name: dashboard
@@ -71,6 +72,94 @@ paths:
           description: Sessão encerrada
           headers:
             Set-Cookie: { $ref: '#/components/headers/ExpiredSessionCookie' }
+  /api/auth/verify-email:
+    post:
+      tags: [auth]
+      security: []
+      summary: Confirma o e-mail com o token recebido por e-mail
+      description: |
+        Pública: o link `{PUBLIC_BASE_URL}/verificar-email?token=...` pode ser aberto sem
+        sessão. O token vale por 30 minutos e só uma vez; só o hash fica no banco.
+        Conta não verificada continua podendo entrar e usar a API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerifyEmailRequest' }
+      responses:
+        '204': { description: E-mail confirmado }
+        '400':
+          description: |
+            `TOKEN_INVALID` (inexistente, adulterado ou já usado), `TOKEN_EXPIRED` ou
+            `VALIDATION_ERROR` (token vazio ou com mais de 100 caracteres).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /api/auth/resend-verification:
+    post:
+      tags: [auth]
+      summary: Reenvia o link de confirmação do e-mail
+      description: |
+        Invalida o link anterior. No máximo 1 envio a cada 60 segundos e 5 por hora por
+        Usuário (o e-mail do cadastro conta como o primeiro).
+      responses:
+        '204': { description: Novo link enviado }
+        '401': { description: Sem cookie de sessão ou sessão inválida }
+        '409': { description: E-mail já confirmado (`ALREADY_VERIFIED`), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /api/auth/oauth/{provider}:
+    get:
+      tags: [auth]
+      security: []
+      summary: Começa o login com Google ou GitHub
+      description: |
+        Navegação do browser (não é chamada `fetch`): redireciona com `302` ao provedor, pedindo
+        apenas nome e e-mail (Google `openid email profile`; GitHub `read:user user:email`), com
+        `state` e PKCE (`S256`). Define o cookie `lumi_oauth_state` (`HttpOnly`, `SameSite=Lax`,
+        `Path=/api/auth/oauth`, 10 minutos), que guarda só o `state` assinado; o `code_verifier`
+        nunca sai do servidor. O `redirect_uri` é `{PUBLIC_BASE_URL}/api/auth/oauth/callback/{provider}`
+        e precisa estar cadastrado no app do provedor. Provedor sem credenciais configuradas:
+        `302` para `{PUBLIC_BASE_URL}/login?oauth_error=OAUTH_DISABLED`. Limitada por IP,
+        no mesmo balde do callback.
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema: { type: string, enum: [google, github] }
+      responses:
+        '302': { description: 'Redirect ao provedor, ou a `/login?oauth_error=OAUTH_DISABLED` se desligado' }
+        '404': { description: Provedor desconhecido }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /api/auth/oauth/callback/{provider}:
+    get:
+      tags: [auth]
+      security: []
+      summary: Retorno do provedor; abre a sessão e volta ao front
+      description: |
+        Chamado pelo provedor via redirect do browser. Valida o `state` contra o cookie
+        `lumi_oauth_state` (obrigatório), troca o `code` com PKCE e aplica as regras de vinculação:
+        identidade já conhecida entra na conta dona; e-mail NÃO verificado pelo provedor é recusado
+        (`OAUTH_EMAIL_UNVERIFIED`); e-mail verificado igual ao de uma conta existente vincula (se a
+        conta não estava verificada, ela passa a verificada e a senha anterior é invalidada,
+        `hasPassword=false`); sem conta, cria uma (verificada, `hasPassword=false`).
+        O destino do redirect é sempre `{PUBLIC_BASE_URL}/dashboard` ou
+        `{PUBLIC_BASE_URL}/login?oauth_error=<código>`; nunca vem do request. Códigos:
+        `OAUTH_DISABLED`, `OAUTH_STATE_INVALID`, `OAUTH_DENIED`, `OAUTH_EMAIL_UNVERIFIED`,
+        `OAUTH_PROVIDER_ERROR`. Erros de negócio nunca viram `401`.
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema: { type: string, enum: [google, github] }
+        - { name: code, in: query, required: false, schema: { type: string } }
+        - { name: state, in: query, required: false, schema: { type: string } }
+        - { name: error, in: query, required: false, schema: { type: string } }
+      responses:
+        '302':
+          description: 'Sucesso: `Set-Cookie: lumi_session` e redirect a `/dashboard`. Falha: redirect a `/login?oauth_error=<código>`, sem sessão'
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+        '404': { description: Provedor desconhecido }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /api/me:
     get:
       tags: [auth]
@@ -78,6 +167,106 @@ paths:
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
         '401': { description: Sem cookie de sessão ou sessão inválida }
+
+  /api/account/profile:
+    patch:
+      tags: [account]
+      summary: Altera o nome da conta
+      description: |
+        Funciona também com o e-mail ainda não confirmado. O `name` é aparado (espaços
+        das pontas, inclusive Unicode) ANTES da validação: vazio ou só espaços é
+        `VALIDATION_ERROR`, e o limite de 120 caracteres (não bytes) vale para o nome já
+        aparado. Caracteres de controle são rejeitados; acentos, apóstrofos e demais
+        caracteres são mantidos como enviados. A conta é sempre a da sessão. A resposta traz
+        um `Set-Cookie` novo, porque o JWT carrega o nome. Sessões emitidas antes continuam
+        válidas até expirar (JWT sem estado), mas `/api/me` lê o nome do banco.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProfileRequest' }
+      responses:
+        '200':
+          description: Nome alterado
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+          content: { application/json: { schema: { $ref: '#/components/schemas/User' } } }
+        '400': { description: '`VALIDATION_ERROR`: nome ausente, vazio, só espaços, com mais de 120 caracteres após o aparo ou com caracteres de controle', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Sem cookie de sessão ou sessão inválida }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /api/account/codes:
+    post:
+      tags: [account]
+      summary: Pede um código de 6 dígitos para trocar o e-mail ou a senha
+      description: |
+        Exige e-mail confirmado. Para `EMAIL_CHANGE` o código vai para o NOVO e-mail
+        (`newEmail`, normalizado em minúsculas, diferente do atual e livre); para
+        `PASSWORD_CHANGE` vai para o e-mail atual e `newEmail` é ignorado. O código vale
+        10 minutos, um novo pedido invalida o anterior, com intervalo mínimo de 60 segundos
+        e no máximo 5 pedidos por hora por Usuário e finalidade. Só o hash fica no banco.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RequestCodeRequest' }
+      responses:
+        '204': { description: Código enviado por e-mail }
+        '400': { description: '`VALIDATION_ERROR`: finalidade desconhecida, `newEmail` ausente, inválido ou igual ao atual', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Sem cookie de sessão ou sessão inválida }
+        '403': { description: E-mail da conta ainda não confirmado (`EMAIL_NOT_VERIFIED`), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: 'Novo e-mail já cadastrado (`EMAIL_TAKEN`) ou, em `PASSWORD_CHANGE`, conta sem senha (`PASSWORD_NOT_SET`)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /api/account/email:
+    post:
+      tags: [account]
+      summary: Troca o e-mail com o código enviado ao novo endereço
+      description: |
+        Exige e-mail confirmado. A senha atual é conferida ANTES do código: senha errada
+        não gasta tentativa nem o código. O código só vale para o `newEmail` para o qual
+        foi emitido. O e-mail continua confirmado (o código o provou), o endereço antigo
+        recebe um aviso e a resposta traz um `Set-Cookie` novo, porque o JWT carrega o
+        e-mail. Sessões emitidas antes continuam válidas até expirar (JWT sem estado).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangeEmailRequest' }
+      responses:
+        '200':
+          description: E-mail trocado
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+          content: { application/json: { schema: { $ref: '#/components/schemas/User' } } }
+        '400': { description: '`VALIDATION_ERROR` (inclui e-mail igual ao atual), `CODE_INVALID` (errado, já usado ou de outro e-mail) ou `CODE_EXPIRED`', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Sem cookie de sessão ou sessão inválida }
+        '403': { description: '`EMAIL_NOT_VERIFIED` ou `WRONG_PASSWORD` (senha atual incorreta; não é 401 para não derrubar a sessão)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: Novo e-mail já cadastrado (`EMAIL_TAKEN`), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: '`CODE_ATTEMPTS_EXCEEDED` (5 palpites errados) ou `RATE_LIMIT` por IP', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/account/password:
+    post:
+      tags: [account]
+      summary: Troca a senha com o código enviado ao e-mail atual
+      description: |
+        Exige e-mail confirmado. A senha atual é conferida ANTES do código: senha errada
+        não gasta tentativa nem o código. A nova senha deve ter de 8 a 72 caracteres e ser
+        diferente da atual. A resposta traz um `Set-Cookie` novo. Sessões emitidas antes
+        continuam válidas até expirar (JWT sem estado).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangePasswordRequest' }
+      responses:
+        '200':
+          description: Senha trocada
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+          content: { application/json: { schema: { $ref: '#/components/schemas/User' } } }
+        '400': { description: '`VALIDATION_ERROR` (inclui nova senha igual à atual), `CODE_INVALID` ou `CODE_EXPIRED`', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Sem cookie de sessão ou sessão inválida }
+        '403': { description: '`EMAIL_NOT_VERIFIED` ou `WRONG_PASSWORD` (senha atual incorreta; não é 401 para não derrubar a sessão)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: 'Conta sem senha (`PASSWORD_NOT_SET`): entra só por Google/GitHub', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: '`CODE_ATTEMPTS_EXCEEDED` (5 palpites errados) ou `RATE_LIMIT` por IP', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
 
   # ---------- LINKS (do Usuário logado) ----------
   /api/links:
@@ -92,6 +281,7 @@ paths:
       responses:
         '201': { description: Criado, content: { application/json: { schema: { $ref: '#/components/schemas/Link' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { description: E-mail da conta ainda não confirmado (code EMAIL_NOT_VERIFIED), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '409': { description: Alias já em uso, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
     get:
       tags: [links]
@@ -285,6 +475,36 @@ components:
       properties:
         email: { type: string, format: email }
         password: { type: string }
+    VerifyEmailRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, maxLength: 100 }
+    RequestCodeRequest:
+      type: object
+      required: [purpose]
+      properties:
+        purpose: { type: string, enum: [EMAIL_CHANGE, PASSWORD_CHANGE] }
+        newEmail: { type: string, format: email, maxLength: 254, description: obrigatório em EMAIL_CHANGE; ignorado em PASSWORD_CHANGE }
+    UpdateProfileRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120, description: Aparado antes de validar; sem caracteres de controle }
+    ChangeEmailRequest:
+      type: object
+      required: [newEmail, code, currentPassword]
+      properties:
+        newEmail: { type: string, format: email, maxLength: 254 }
+        code: { type: string, pattern: '^[0-9]{6}$' }
+        currentPassword: { type: string }
+    ChangePasswordRequest:
+      type: object
+      required: [code, currentPassword, newPassword]
+      properties:
+        code: { type: string, pattern: '^[0-9]{6}$' }
+        currentPassword: { type: string }
+        newPassword: { type: string, minLength: 8, maxLength: 72, description: 'No máximo 72 bytes em UTF-8 (caracteres acentuados ocupam mais de 1 byte); acima disso responde 400 VALIDATION_ERROR' }
     AuthResponse:
       type: object
       description: O token não vem no corpo; viaja no cookie de sessão.
@@ -297,6 +517,8 @@ components:
         id: { type: string, format: uuid }
         name: { type: string }
         email: { type: string }
+        emailVerified: { type: boolean }
+        hasPassword: { type: boolean, description: '`false` para conta criada ou assumida pelo login com Google/GitHub; não tem senha para trocar' }
     LinkState:
       type: string
       description: |

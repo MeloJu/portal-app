@@ -1,5 +1,6 @@
 package dev.l2.api.auth;
 
+import dev.l2.api.auth.verification.VerificationTokenService;
 import dev.l2.api.user.User;
 import dev.l2.api.user.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,9 +19,13 @@ public class AuthService {
 
 	private final PasswordEncoder passwordEncoder;
 
-	public AuthService(UserRepository users, PasswordEncoder passwordEncoder) {
+	private final VerificationTokenService verification;
+
+	public AuthService(UserRepository users, PasswordEncoder passwordEncoder,
+			VerificationTokenService verification) {
 		this.users = users;
 		this.passwordEncoder = passwordEncoder;
+		this.verification = verification;
 	}
 
 	@Transactional
@@ -29,7 +34,9 @@ public class AuthService {
 		if (this.users.existsByEmail(normalized)) {
 			throw new EmailAlreadyUsedException();
 		}
-		return this.users.save(new User(normalized, this.passwordEncoder.encode(rawPassword), name));
+		User user = this.users.save(new User(normalized, this.passwordEncoder.encode(rawPassword), name));
+		this.verification.issueAndNotify(user);
+		return user;
 	}
 
 	@Transactional(readOnly = true)

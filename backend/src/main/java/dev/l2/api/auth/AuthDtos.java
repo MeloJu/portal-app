@@ -26,10 +26,15 @@ public final class AuthDtos {
 
 	}
 
-	public record UserResponse(UUID id, String name, String email) {
+	public record VerifyEmailRequest(@NotBlank @Size(max = 100) String token) {
+
+	}
+
+	public record UserResponse(UUID id, String name, String email, boolean emailVerified, boolean hasPassword) {
 
 		public static UserResponse of(User user) {
-			return new UserResponse(user.getId(), user.getName(), user.getEmail());
+			return new UserResponse(user.getId(), user.getName(), user.getEmail(), user.isEmailVerified(),
+					user.hasPassword());
 		}
 
 	}

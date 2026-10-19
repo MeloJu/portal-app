@@ -119,6 +119,9 @@ Sem isso, `/actuator/prometheus` fica público.
 | `api` | decidido |
 
 - Não logar body de `/api/auth/**`.
+- O corpo do e-mail (com link e código) só vai ao log com `MAIL_ENABLED=false`, ou seja, fora de produção.
+- A falha de envio de e-mail registra só o assunto e a classe da exceção, nunca a exceção inteira (mensagem
+  ou stack trace): ninguém troca isso por `log.warn(..., failure)` "pra debugar".
 - O agente OTel não captura o header `Authorization` por padrão — manter assim (ou seja:
   ninguém adiciona isso a uma allowlist de headers "pra debugar").
 
@@ -150,7 +153,8 @@ Rotas que precisam, no mínimo:
 
 - `/api/auth/login` — força bruta;
 - `/api/auth/register` — força bruta e criação em massa;
-- `/api/travel` — inflar contagem.
+- `/api/travel` — inflar contagem;
+- `/api/auth/oauth/**` — início e retorno do login com Google/GitHub (balde único por IP).
 
 Duas opções, com trade-off diferente:
 
@@ -214,6 +218,53 @@ Por isso o `/r/{code}` responde com `Referrer-Policy: no-referrer` emitido pelo
 header (`TravelApiTests.doesNotLeakTheShortCodeToTheDestination`).
 
 Vale a regra geral: **rota que responde fora do nginx precisa dos próprios cabeçalhos**.
+
+## 14. Login com Google e GitHub (OAuth)
+
+| Onde | Status |
+| --- | --- |
+| `api` | decidido |
+
+Fluxo authorization code + PKCE (`S256`) implementado na app (`dev.l2.api.auth.oauth`), sem o
+starter `oauth2-client` do Spring: ele pede sessão HTTP ou repositório próprio para o
+`state`, registro estático de clientes (incompatível com "credencial vazia = recurso
+desligado") e serviços de usuário customizados para o GitHub. O fluxo próprio tem poucas
+classes e fica inteiro testável sem rede.
+
+- **Escopos mínimos:** Google `openid email profile`; GitHub `read:user user:email`.
+- **`state` e PKCE sem sessão:** a cadeia é `STATELESS` e o `lumi_session` é `SameSite=Strict`,
+  que o browser não envia no redirect de volta do provedor. O `state` vive no cookie
+  `lumi_oauth_state` (`HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/api/auth/oauth`, 10 min),
+  com valor `state.expiração.assinatura` (HMAC-SHA256 com a chave do JWT e rótulo próprio).
+  O `code_verifier` **não é guardado em lugar nenhum**: é derivado por HMAC do `state` e só o
+  servidor o recalcula, então o browser nunca o vê. O callback exige cookie válido, não
+  expirado, do mesmo provedor, e igual ao `state` da query; sem isso, `OAUTH_STATE_INVALID` e
+  nenhuma chamada ao provedor.
+- **Sem open redirect:** o destino é sempre `{PUBLIC_BASE_URL}/dashboard` ou
+  `{PUBLIC_BASE_URL}/login?oauth_error=<código fixo>`; nada do request entra na URL. O
+  `redirect_uri` também é montado de `PUBLIC_BASE_URL`, nunca do `Host`.
+- **Google:** o e-mail vem do `userinfo` (token recebido direto do endpoint do Google por TLS),
+  e só vale com `email_verified=true`. **GitHub:** só o e-mail com `primary=true` **e**
+  `verified=true` de `/user/emails`; os demais são ignorados.
+- **Vinculação:** identidade `(provedor, id)` já conhecida entra na conta dona. Senão, e-mail
+  não verificado pelo provedor é recusado (`OAUTH_EMAIL_UNVERIFIED`). E-mail verificado igual
+  ao de conta existente vincula; se essa conta **não** estava verificada, ela vira verificada,
+  a senha é trocada por hash de segredo aleatório descartado (`has_password=false`) e os
+  tokens de verificação e códigos de conta pendentes são invalidados: quem pré-registrou o
+  e-mail da vítima perde a senha. Sem conta, cria usuário verificado, sem senha. E-mail
+  normalizado (`trim` + minúsculas) como no cadastro.
+- **Conta sem senha:** `POST /api/account/password` e o pedido de código `PASSWORD_CHANGE`
+  respondem `409 PASSWORD_NOT_SET` (não `401`, que derrubaria a sessão no front). O login por
+  senha falha como qualquer senha errada.
+- **Desligado por padrão:** `GOOGLE_*`/`GITHUB_*` vazias desligam o provedor, que responde
+  `302` para `/login?oauth_error=OAUTH_DISABLED` sem chamar ninguém. Nome de provedor
+  desconhecido é `404`.
+- **Sem vazamento em log:** tokens, `code`, `client_secret` e corpos de resposta dos provedores
+  nunca são logados nem encadeados em exceções; falhas viram só o nome da classe do erro.
+- **Rate limit:** `GET /api/auth/oauth/**` por IP (`app.rate-limit.oauth`, 20 por minuto).
+- **Risco residual:** o JWT é sem estado (seção 4). Um atacante que pré-registrou o e-mail e já
+  tinha sessão aberta continua autenticado na conta até o token expirar (até 8 h), mesmo
+  depois da senha invalidada. Revogar exigiria versão de sessão no usuário; fica fora desta task.
 
 ---
 

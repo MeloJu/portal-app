@@ -1,7 +1,9 @@
 package dev.l2.api.ratelimit;
 
+import dev.l2.api.EmailVerification;
 import dev.l2.api.TestcontainersConfiguration;
 import dev.l2.api.auth.SessionCookie;
+import dev.l2.api.user.UserRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,7 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -31,13 +34,26 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		"app.rate-limit.register.capacity=2",
 		"app.rate-limit.register.window=1m",
 		"app.rate-limit.travel.capacity=2",
-		"app.rate-limit.travel.window=1m" })
+		"app.rate-limit.travel.window=1m",
+		"app.rate-limit.verify-email.capacity=2",
+		"app.rate-limit.verify-email.window=1m",
+		"app.rate-limit.account-code.capacity=2",
+		"app.rate-limit.account-code.window=1m",
+		"app.rate-limit.account-change.capacity=2",
+		"app.rate-limit.account-change.window=1m",
+		"app.rate-limit.account-profile.capacity=2",
+		"app.rate-limit.account-profile.window=1m",
+		"app.rate-limit.oauth.capacity=2",
+		"app.rate-limit.oauth.window=1m" })
 class RateLimitApiTests {
 
 	private static final String PASSWORD = "senha-bem-grande";
 
 	@Autowired
 	private MockMvc mvc;
+
+	@Autowired
+	private UserRepository users;
 
 	@Test
 	void blocksTheThirdLoginFromTheSameAddress() throws Exception {
@@ -51,6 +67,82 @@ class RateLimitApiTests {
 				.andExpect(header().exists(HttpHeaders.RETRY_AFTER))
 				.andExpect(jsonPath("$.code").value("RATE_LIMIT"))
 				.andExpect(jsonPath("$.message").isNotEmpty());
+	}
+
+	@Test
+	void blocksTheThirdEmailVerificationFromTheSameAddress() throws Exception {
+		String address = "10.1.0.9";
+
+		verifyEmail(address).andExpect(status().isBadRequest());
+		verifyEmail(address).andExpect(status().isBadRequest());
+		verifyEmail(address)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists(HttpHeaders.RETRY_AFTER))
+				.andExpect(jsonPath("$.code").value("RATE_LIMIT"));
+
+		verifyEmail("10.1.0.10").andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void blocksTheThirdAccountCodeRequestAndTheThirdAccountChangeFromTheSameAddress() throws Exception {
+		Cookie session = register("10.1.0.20").cookie();
+		String address = "10.1.0.21";
+
+		for (String path : new String[] { "/api/account/codes", "/api/account/email" }) {
+			accountPost(path, session, address).andExpect(status().isBadRequest());
+			accountPost(path, session, address).andExpect(status().isBadRequest());
+			accountPost(path, session, address)
+					.andExpect(status().isTooManyRequests())
+					.andExpect(header().exists(HttpHeaders.RETRY_AFTER))
+					.andExpect(jsonPath("$.code").value("RATE_LIMIT"));
+		}
+
+		accountPost("/api/account/codes", session, "10.1.0.22").andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void blocksTheThirdProfileUpdateFromTheSameAddressWithItsOwnBudget() throws Exception {
+		Cookie session = register("10.1.0.50").cookie();
+		String address = "10.1.0.51";
+
+		profilePatch(session, address, "Ana Um").andExpect(status().isOk());
+		profilePatch(session, address, "Ana Dois").andExpect(status().isOk());
+		profilePatch(session, address, "Ana Tres")
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists(HttpHeaders.RETRY_AFTER))
+				.andExpect(jsonPath("$.code").value("RATE_LIMIT"));
+
+		accountPost("/api/account/email", session, address).andExpect(status().isBadRequest());
+		profilePatch(session, "10.1.0.52", "Ana Quatro").andExpect(status().isOk());
+	}
+
+	@Test
+	void emailAndPasswordChangesShareTheSameBudgetPerAddress() throws Exception {
+		Cookie session = register("10.1.0.30").cookie();
+		String address = "10.1.0.31";
+
+		accountPost("/api/account/email", session, address).andExpect(status().isBadRequest());
+		accountPost("/api/account/password", session, address).andExpect(status().isBadRequest());
+
+		accountPost("/api/account/password", session, address)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMIT"));
+		accountPost("/api/account/email", session, address).andExpect(status().isTooManyRequests());
+		accountPost("/api/account/password", session, "10.1.0.32").andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void blocksTheThirdOAuthRequestFromTheSameAddressAcrossStartAndCallback() throws Exception {
+		String address = "10.1.0.40";
+
+		this.mvc.perform(get("/api/auth/oauth/google").with(from(address))).andExpect(status().isFound());
+		this.mvc.perform(get("/api/auth/oauth/callback/google").with(from(address))).andExpect(status().isFound());
+		this.mvc.perform(get("/api/auth/oauth/github").with(from(address)))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists(HttpHeaders.RETRY_AFTER))
+				.andExpect(jsonPath("$.code").value("RATE_LIMIT"));
+
+		this.mvc.perform(get("/api/auth/oauth/google").with(from("10.1.0.41"))).andExpect(status().isFound());
 	}
 
 	@Test
@@ -143,6 +235,7 @@ class RateLimitApiTests {
 				.andReturn()
 				.getResponse()
 				.getCookie(SessionCookie.NAME);
+		EmailVerification.verify(this.users, email);
 		return new Session(email, cookie);
 	}
 
@@ -152,6 +245,33 @@ class RateLimitApiTests {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"email":"%s","password":"%s"}""".formatted(email, PASSWORD)));
+	}
+
+	private org.springframework.test.web.servlet.ResultActions accountPost(String path, Cookie session,
+			String address) throws Exception {
+		return this.mvc.perform(post(path)
+				.cookie(session)
+				.with(from(address))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{}"));
+	}
+
+	private org.springframework.test.web.servlet.ResultActions profilePatch(Cookie session, String address,
+			String name) throws Exception {
+		return this.mvc.perform(patch("/api/account/profile")
+				.cookie(session)
+				.with(from(address))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"name":"%s"}""".formatted(name)));
+	}
+
+	private org.springframework.test.web.servlet.ResultActions verifyEmail(String address) throws Exception {
+		return this.mvc.perform(post("/api/auth/verify-email")
+				.with(from(address))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"token":"inexistente"}"""));
 	}
 
 	private org.springframework.test.web.servlet.ResultActions travel(String address, String code) throws Exception {

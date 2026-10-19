@@ -93,7 +93,7 @@ O front fala com a API **pela mesma origem** (o Vite em desenvolvimento e o ngin
 
 ### Backend
 
-Escolha uma das opções. Ambas criam o `.env` se faltar, geram um `JWT_SECRET`, sobem o PostgreSQL pelo
+Escolha uma das opções. Ambas criam o `.env` se faltar, geram um `JWT_SECRET` e um `APP_CODE_PEPPER`, sobem o PostgreSQL pelo
 Docker Compose, esperam o healthcheck e iniciam a API.
 
 **Opção A: Docker** (sem Java instalado; a primeira execução demora por causa do build)
@@ -110,8 +110,8 @@ Docker Compose, esperam o healthcheck e iniciam a API.
 
 > **Por que usar os scripts?** O Spring Boot **não** lê o `.env`; quem o interpreta é o Docker Compose.
 > Rodar `./mvnw spring-boot:run` direto deixa `DB_URL` vazio e dá `'url' must start with "jdbc"`. Os
-> scripts carregam as variáveis no processo. O backend exige `JWT_SECRET` com ao menos 256 bits e falha
-> ao iniciar se ele faltar.
+> scripts carregam as variáveis no processo. O backend exige `JWT_SECRET` e `APP_CODE_PEPPER` com ao menos
+> 256 bits cada e falha ao iniciar se algum faltar.
 
 ### Frontend e tools-api
 
@@ -138,6 +138,16 @@ O backend recusa destino no próprio host (`SELF_LOOP`), então use um domínio 
 O cookie de sessão é `Secure` por padrão. Para testar a API em HTTP, ponha `SESSION_COOKIE_SECURE=false`
 no `.env`. **Nunca desabilite isso em produção.**
 
+### E-mail em desenvolvimento
+
+Com `MAIL_ENABLED=false` (o padrão em dev e nos testes) nada sai pela rede: o `LoggingEmailSender` escreve
+destinatário, assunto e corpo no log. Para enviar de verdade, ponha `MAIL_ENABLED=true` e preencha
+`MAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` e `SMTP_PASSWORD` (`SMTP_STARTTLS=true` na porta 587; `SMTP_AUTH=false` só para relay interno sem login).
+O envio é assíncrono e falha sem derrubar a requisição: o erro vira um `WARN` sem corpo, código ou token.
+Se `MAIL_ENABLED` faltar, a API sobe com o envio simulado e avisa com `WARN`: no cluster, `MAIL_ENABLED=true`
+no `l2-config` é pré-requisito para os fluxos de verificação, senão links e códigos vão para o log.
+Nos testes, importe `TestEmailConfiguration` para capturar as mensagens no `RecordingEmailSender`.
+
 ## 🧪 Como testar
 
 | O quê | Comando |
@@ -150,7 +160,9 @@ no `.env`. **Nunca desabilite isso em produção.**
 
 O E2E sobe o backend e o Vite do próprio checkout, com rate limit desligado e um `JWT_SECRET` gerado na
 hora. As portas `5173`, `8080` e `8081` precisam estar livres. Se falhar no CI, os traces do Playwright
-ficam no artefato `playwright-traces`. Antes de um PR que mexa em sessão, portais, Travessia ou Proteção,
+ficam no artefato `playwright-traces`. Os testes marcam o usuário registrado como verificado direto no banco
+(`users.email_verified_at`); a conexão usa `E2E_DB_HOST`, `E2E_DB_PORT`, `E2E_DB_NAME`, `E2E_DB_USER` e
+`E2E_DB_PASSWORD`, com padrão `localhost:5432` e banco e usuário `lumi`, igual ao `docker compose` e ao CI. Antes de um PR que mexa em sessão, portais, Travessia ou Proteção,
 siga o [roteiro manual](docs/integracao/roteiro-manual.md) (dez passos no navegador).
 
 ### API
@@ -171,7 +183,8 @@ O contrato está em [`docs/openapi.yaml`](docs/openapi.yaml) e a documentação 
 cd backend && docker build -t l2-api:dev .
 docker run --rm -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp \
   -e DB_URL=jdbc:postgresql://host.docker.internal:5432/lumi -e DB_USER=lumi -e DB_PASSWORD=lumi \
-  -e PUBLIC_BASE_URL=http://localhost:8080 -e JWT_SECRET="$(openssl rand -base64 32)" l2-api:dev
+  -e PUBLIC_BASE_URL=http://localhost:8080 -e JWT_SECRET="$(openssl rand -base64 32)" \
+  -e APP_CODE_PEPPER="$(openssl rand -base64 32)" l2-api:dev
 curl http://localhost:8081/actuator/health      # {"status":"UP"}
 ```
 
@@ -188,6 +201,34 @@ publica no GHCR:
 
 Em PR as imagens só são construídas e escaneadas. As tags são `sha-<7 do commit>` (imutável, é a que vai
 para o cluster) e o nome da branch.
+
+### E-mail e segredos de produção
+
+| Variável | Para quê | Obrigatória |
+|---|---|---|
+| `APP_CODE_PEPPER` | pepper dos códigos de verificação, ao menos 256 bits (`openssl rand -base64 32`) | sim; a app não sobe sem ele |
+| `MAIL_ENABLED` | liga o envio de e-mail (`false` por padrão) | não |
+| `MAIL_FROM` | remetente | com e-mail ligado |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | servidor SMTP | com e-mail ligado |
+
+No cluster, `APP_CODE_PEPPER`, `SMTP_USER` e `SMTP_PASSWORD` entram no Secret `l2-secrets` do
+`portal-gitops` (`apps/l2`), selado, e chegam ao Deployment da API por `secretKeyRef`, chave a chave.
+`MAIL_ENABLED`, `MAIL_FROM`, `SMTP_HOST` e `SMTP_PORT` não são secretos e vão no ConfigMap `l2-config`.
+Esses valores **não vão ao Git** deste repositório: aqui só existe o `.env.example`, com valores vazios.
+
+### Login com Google e GitHub
+
+| Variável | Para quê | Obrigatória |
+|---|---|---|
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | credenciais do app OAuth do Google | não; vazias desligam o Google |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | credenciais do OAuth App do GitHub | não; vazias desligam o GitHub |
+
+Cada provedor liga sozinho quando **id e secret** estão preenchidos; com qualquer um vazio ele fica desligado e
+`GET /api/auth/oauth/{google|github}` responde `302` para `{PUBLIC_BASE_URL}/login?oauth_error=OAUTH_DISABLED`.
+Cadastre no provedor a URL de retorno `{PUBLIC_BASE_URL}/api/auth/oauth/callback/google` (ou `/github`);
+em dev, `PUBLIC_BASE_URL` é `http://localhost:5173`. Só são pedidos nome e e-mail (Google `openid email profile`,
+GitHub `read:user user:email`). No cluster, os secrets entram no Secret `l2-secrets` do `portal-gitops`, selados; os ids
+podem ir no ConfigMap `l2-config`. Os testes mockam os provedores e não usam rede nem credenciais.
 
 ### Do commit ao cluster
 

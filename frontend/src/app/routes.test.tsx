@@ -13,7 +13,7 @@ vi.mock("../api/auth", async (importOriginal) => ({
 vi.mock("../api/travel", () => ({ travel: vi.fn() }));
 const currentUser = vi.mocked(auth.currentUser);
 const travel = vi.mocked(api.travel);
-const ana = { id: "u1", name: "Ana Martins", email: "ana@lumi.dev" };
+const ana = { id: "u1", name: "Ana Martins", email: "ana@lumi.dev", emailVerified: true, hasPassword: true };
 
 function go(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
@@ -45,6 +45,14 @@ describe("rotas", () => {
     const router = go("/r/abc123");
     await vi.waitFor(() => expect(router.state.location.pathname).toBe("/r/abc123"));
     expect(currentUser).not.toHaveBeenCalled();
+  });
+
+  it("/verificar-email não é capturada pela Travessia /:code", async () => {
+    currentUser.mockResolvedValue(null);
+    const router = go("/verificar-email");
+    expect(await screen.findByRole("heading", { name: /link inválido/i })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/verificar-email");
+    expect(travel).not.toHaveBeenCalled();
   });
 
   it("com a API fora do ar mostra a estação desligada e tenta de novo", async () => {

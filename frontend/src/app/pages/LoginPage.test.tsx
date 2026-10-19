@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 import * as auth from "../../api/auth";
 import LoginPage from "./LoginPage";
 
@@ -30,17 +30,19 @@ async function fillAndSubmit(email = "ana@lumi.studio", password = "segredo") {
   await userEvent.click(screen.getByRole("button", { name: /entrar na estação/i }));
 }
 
-function renderLogin() {
+function renderLogin(initialEntry = "/login") {
   const router = createMemoryRouter(
     [
       { path: "/login", Component: LoginPage },
       { path: "/dashboard", element: <p>dashboard</p> },
     ],
-    { initialEntries: ["/login"] },
+    { initialEntries: [initialEntry] },
   );
   render(<RouterProvider router={router} />);
   return router;
 }
+
+const GENERIC_OAUTH_MESSAGE = "Não foi possível entrar com o provedor. Tente novamente.";
 
 describe("LoginPage", () => {
   // Os mocks guardam as chamadas entre testes: sem isso, um "not.toHaveBeenCalled" pega a chamada do teste anterior.
@@ -64,7 +66,13 @@ describe("LoginPage", () => {
   });
 
   it("faz login na API e navega para o dashboard", async () => {
-    login.mockResolvedValue({ id: "u1", name: "Ana", email: "ana@lumi.studio" });
+    login.mockResolvedValue({
+      id: "u1",
+      name: "Ana",
+      email: "ana@lumi.studio",
+      emailVerified: true,
+      hasPassword: true,
+    });
     const router = renderLogin();
     await fillAndSubmit();
     await waitFor(() => expect(router.state.location.pathname).toBe("/dashboard"));
@@ -100,7 +108,13 @@ describe("LoginPage", () => {
     });
 
     it("cadastra na API e navega para o dashboard", async () => {
-      register.mockResolvedValue({ id: "u1", name: "Ana", email: "ana@lumi.studio" });
+      register.mockResolvedValue({
+        id: "u1",
+        name: "Ana",
+        email: "ana@lumi.studio",
+        emailVerified: true,
+        hasPassword: true,
+      });
       const router = renderLogin();
       await openRegister();
       await fillRegister("Ana", "ana@lumi.studio", "segredo-grande");
@@ -154,6 +168,89 @@ describe("LoginPage", () => {
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
       expect(screen.queryByPlaceholderText("Como podemos te chamar?")).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: /entrar na estação/i })).toBeInTheDocument();
+    });
+  });
+
+  describe("login social", () => {
+    const originalLocation = window.location;
+    const assign = vi.fn();
+
+    beforeEach(() => {
+      assign.mockClear();
+      Object.defineProperty(window, "location", { configurable: true, value: { ...originalLocation, assign } });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(window, "location", { configurable: true, value: originalLocation });
+    });
+
+    it("o botão do Google navega para a rota OAuth do Google", async () => {
+      renderLogin();
+      await userEvent.click(screen.getByRole("button", { name: "Continuar com Google" }));
+      expect(assign).toHaveBeenCalledWith("/api/auth/oauth/google");
+      expect(assign).toHaveBeenCalledTimes(1);
+    });
+
+    it("o botão do GitHub navega para a rota OAuth do GitHub", async () => {
+      renderLogin();
+      await userEvent.click(screen.getByRole("button", { name: "Continuar com GitHub" }));
+      expect(assign).toHaveBeenCalledWith("/api/auth/oauth/github");
+      expect(assign).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("erro de OAuth na URL", () => {
+    it("mostra a mensagem do e-mail não verificado e limpa o parâmetro", async () => {
+      const router = renderLogin("/login?oauth_error=OAUTH_EMAIL_UNVERIFIED");
+      expect(await screen.findByRole("alert")).toHaveTextContent(/e-mail no provedor ainda não foi verificado/i);
+      await waitFor(() => expect(router.state.location.search).toBe(""));
+      expect(router.state.location.pathname).toBe("/login");
+      expect(screen.getByRole("alert")).toHaveTextContent(/não foi verificado/i);
+    });
+
+    it("usa a mensagem genérica para o erro do provedor", async () => {
+      renderLogin("/login?oauth_error=OAUTH_PROVIDER_ERROR");
+      expect(await screen.findByRole("alert")).toHaveTextContent(GENERIC_OAUTH_MESSAGE);
+    });
+
+    it.each(["__proto__", "constructor", "toString", "hasOwnProperty"])(
+      "nome herdado de Object.prototype (%s) cai na mensagem genérica",
+      async (code) => {
+        renderLogin(`/login?oauth_error=${code}`);
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent(GENERIC_OAUTH_MESSAGE);
+        expect(alert.textContent).toBe(GENERIC_OAUTH_MESSAGE);
+        expect(screen.getByRole("heading", { name: "Entre na sua estação" })).toBeInTheDocument();
+      },
+    );
+
+    it.each(["<img src=x onerror=alert(1)>", "Sua conta foi bloqueada, ligue 0800"])(
+      "valor arbitrário (%s) mostra a genérica e nunca o texto bruto",
+      async (raw) => {
+        const container = document.body;
+        renderLogin(`/login?oauth_error=${encodeURIComponent(raw)}`);
+        const alert = await screen.findByRole("alert");
+        expect(alert.textContent).toBe(GENERIC_OAUTH_MESSAGE);
+        expect(container.textContent).not.toContain(raw);
+        expect(container.innerHTML).not.toContain("onerror");
+      },
+    );
+
+    it("o alerta de OAuth some ao trocar para Criar conta", async () => {
+      renderLogin("/login?oauth_error=OAUTH_DENIED");
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Criar conta" }));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("mantém os outros parâmetros da URL depois de limpar o oauth_error", async () => {
+      const router = renderLogin("/login?oauth_error=OAUTH_DENIED&ref=abc");
+      await waitFor(() => expect(router.state.location.search).toBe("?ref=abc"));
+    });
+
+    it("sem o parâmetro não mostra erro", () => {
+      renderLogin();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
   });
 });

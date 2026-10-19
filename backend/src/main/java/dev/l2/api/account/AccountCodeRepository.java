@@ -23,12 +23,18 @@ public interface AccountCodeRepository extends JpaRepository<AccountCode, UUID> 
 			@Param("now") Instant now);
 
 	@Modifying(flushAutomatically = true)
-	@Query("update AccountCode c set c.usedAt = :now where c.id = :id and c.usedAt is null")
-	int markUsedIfUnused(@Param("id") UUID id, @Param("now") Instant now);
+	@Query("update AccountCode c set c.usedAt = :now where c.id = :id and c.usedAt is null and c.attempts < :maxAttempts and c.expiresAt > :now")
+	int markUsedIfUnused(@Param("id") UUID id, @Param("now") Instant now, @Param("maxAttempts") int maxAttempts);
 
 	@Modifying
-	@Query("update AccountCode c set c.attempts = c.attempts + 1 where c.id = :id")
-	int incrementAttempts(@Param("id") UUID id);
+	@Query("update AccountCode c set c.attempts = c.attempts + 1 where c.id = :id and c.attempts < :maxAttempts")
+	int incrementAttempts(@Param("id") UUID id, @Param("maxAttempts") int maxAttempts);
+
+	@Query("select c.attempts from AccountCode c where c.id = :id")
+	int attemptsOf(@Param("id") UUID id);
+
+	@Query(value = "select 1 from (select pg_advisory_xact_lock(hashtextextended(:key, 0))) as locked", nativeQuery = true)
+	int lockIssuance(@Param("key") String key);
 
 	@Modifying
 	@Query("update AccountCode c set c.usedAt = :now where c.id = :id and c.attempts >= :maxAttempts and c.usedAt is null")

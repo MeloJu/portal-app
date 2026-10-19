@@ -30,9 +30,10 @@ public class AccountCodeAttempts {
 	}
 
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
-	public void registerFailure(UUID codeId) {
-		this.codes.incrementAttempts(codeId);
+	public boolean registerFailure(UUID codeId) {
+		boolean registered = this.codes.incrementAttempts(codeId, this.maxAttempts) > 0;
 		this.codes.invalidateIfExhausted(codeId, this.maxAttempts, this.clock.instant());
+		return registered;
 	}
 
 }

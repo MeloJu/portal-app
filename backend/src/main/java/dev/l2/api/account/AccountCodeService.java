@@ -52,6 +52,7 @@ public class AccountCodeService {
 
 	@Transactional
 	public String issue(User user, AccountCodePurpose purpose, String newEmailOrNull) {
+		this.codes.lockIssuance(user.getId() + ":" + purpose);
 		Instant now = this.clock.instant();
 		requireNotTooSoon(user, purpose, now);
 		this.codes.invalidateActive(user.getId(), purpose, now);
@@ -81,10 +82,15 @@ public class AccountCodeService {
 			throw new CodeExpiredException();
 		}
 		if (!matches(user, purpose, submittedCode, expectedNewEmailOrNull, code)) {
-			this.attempts.registerFailure(code.getId());
+			if (!this.attempts.registerFailure(code.getId())) {
+				throw new CodeAttemptsExceededException();
+			}
 			throw new CodeInvalidException();
 		}
-		if (this.codes.markUsedIfUnused(code.getId(), now) == 0) {
+		if (this.codes.markUsedIfUnused(code.getId(), now, this.settings.maxAttempts()) == 0) {
+			if (this.codes.attemptsOf(code.getId()) >= this.settings.maxAttempts()) {
+				throw new CodeAttemptsExceededException();
+			}
 			throw new CodeInvalidException();
 		}
 		code.markUsed(now);

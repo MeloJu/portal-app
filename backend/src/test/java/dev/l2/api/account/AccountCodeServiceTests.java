@@ -19,8 +19,16 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.random.RandomGenerator;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -263,6 +271,113 @@ class AccountCodeServiceTests {
 		AccountCode consumed = this.service.consume(this.user, AccountCodePurpose.EMAIL_CHANGE, code,
 				"NOVO@example.com");
 		assertThat(consumed.getNewEmail()).isEqualTo("novo@example.com");
+	}
+
+	private List<Object> runConcurrently(List<Callable<Object>> tasks) throws Exception {
+		ExecutorService executor = Executors.newFixedThreadPool(tasks.size());
+		CountDownLatch ready = new CountDownLatch(tasks.size());
+		CountDownLatch go = new CountDownLatch(1);
+		try {
+			List<Future<Object>> futures = new ArrayList<>();
+			for (Callable<Object> task : tasks) {
+				futures.add(executor.submit(() -> {
+					ready.countDown();
+					go.await();
+					try {
+						return task.call();
+					}
+					catch (Exception failure) {
+						return failure;
+					}
+				}));
+			}
+			ready.await();
+			go.countDown();
+			List<Object> results = new ArrayList<>();
+			for (Future<Object> future : futures) {
+				results.add(future.get(60, TimeUnit.SECONDS));
+			}
+			return results;
+		}
+		finally {
+			executor.shutdownNow();
+		}
+	}
+
+	private Callable<Object> consuming(User owner, String code) {
+		return () -> this.service.consume(owner, AccountCodePurpose.PASSWORD_CHANGE, code, null);
+	}
+
+	private static long count(List<Object> results, Class<?> type) {
+		return results.stream().filter(type::isInstance).count();
+	}
+
+	@Test
+	void concurrentWrongGuessesNeverRecordMoreThanTheMaximumAttempts() throws Exception {
+		this.random.script(135_791);
+		String code = this.service.issue(this.user, AccountCodePurpose.PASSWORD_CHANGE, null);
+		List<Object> results = new ArrayList<>();
+
+		for (int wave = 0; wave < 2; wave++) {
+			results.addAll(runConcurrently(List.of(consuming(this.user, "654321"), consuming(this.user, "654322"),
+					consuming(this.user, "654323"), consuming(this.user, "654324"))));
+		}
+
+		assertThat(latest(this.user, AccountCodePurpose.PASSWORD_CHANGE).getAttempts()).isEqualTo(5);
+		assertThat(count(results, CodeInvalidException.class)).isEqualTo(5);
+		assertThat(count(results, CodeAttemptsExceededException.class)).isEqualTo(3);
+		assertThat(runConcurrently(List.of(consuming(this.user, code), consuming(this.user, "654325"))))
+				.allMatch(CodeAttemptsExceededException.class::isInstance);
+	}
+
+	@Test
+	void correctGuessAmongConcurrentWrongOnesIsRejectedOnceTheLimitIsReached() throws Exception {
+		this.random.script(246_802);
+		String code = this.service.issue(this.user, AccountCodePurpose.PASSWORD_CHANGE, null);
+		runConcurrently(List.of(consuming(this.user, "654321"), consuming(this.user, "654322"),
+				consuming(this.user, "654323"), consuming(this.user, "654324")));
+
+		List<Object> results = runConcurrently(List.of(consuming(this.user, "654325"),
+				consuming(this.user, "654326"), consuming(this.user, code), consuming(this.user, "654327")));
+
+		assertThat(latest(this.user, AccountCodePurpose.PASSWORD_CHANGE).getAttempts()).isLessThanOrEqualTo(5);
+		assertThat(count(results, AccountCode.class)).isLessThanOrEqualTo(1);
+		assertThat(count(results, CodeInvalidException.class) + count(results, CodeAttemptsExceededException.class)
+				+ count(results, AccountCode.class)).isEqualTo(4);
+	}
+
+	@Test
+	void correctGuessAfterTheLimitIsRejectedEvenWhenSentConcurrentlyWithOthers() throws Exception {
+		this.random.script(135_790);
+		String code = this.service.issue(this.user, AccountCodePurpose.PASSWORD_CHANGE, null);
+		for (int attempt = 0; attempt < 5; attempt++) {
+			assertThatThrownBy(() -> this.service.consume(this.user, AccountCodePurpose.PASSWORD_CHANGE, "654321", null))
+					.isInstanceOf(CodeInvalidException.class);
+		}
+
+		List<Object> results = runConcurrently(List.of(consuming(this.user, "654322"), consuming(this.user, code),
+				consuming(this.user, "654323")));
+
+		assertThat(results).allMatch(CodeAttemptsExceededException.class::isInstance);
+		assertThat(latest(this.user, AccountCodePurpose.PASSWORD_CHANGE).getAttempts()).isEqualTo(5);
+	}
+
+	@Test
+	void concurrentIssuesForTheSameUserAndPurposeLetOnlyOnePass() throws Exception {
+		List<Callable<Object>> tasks = new ArrayList<>();
+		for (int index = 0; index < 8; index++) {
+			tasks.add(() -> this.service.issue(this.user, AccountCodePurpose.PASSWORD_CHANGE, null));
+		}
+
+		List<Object> results = runConcurrently(tasks);
+
+		assertThat(count(results, String.class)).isEqualTo(1);
+		assertThat(count(results, CodeRequestTooSoonException.class)).isEqualTo(7);
+		long active = this.codes.findAll().stream()
+				.filter(stored -> stored.getUser().getId().equals(this.user.getId()))
+				.filter(stored -> stored.getUsedAt() == null)
+				.count();
+		assertThat(active).isEqualTo(1);
 	}
 
 	static class MutableClock extends Clock {

@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { verifyUserEmail } from "./database";
 
 export function uniqueEmail(): string {
   return `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
@@ -12,6 +13,7 @@ export async function registerViaApi(
   const password = "senha-forte-e2e";
   const res = await page.request.post("/api/auth/register", { data: { name, email, password } });
   expect(res.status(), await res.text()).toBe(201);
+  await verifyUserEmail(email);
   return { email, password };
 }
 

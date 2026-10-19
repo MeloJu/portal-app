@@ -118,8 +118,8 @@ describe("Dashboard", () => {
     renderDashboard();
     await userEvent.click(within(nav()).getByRole("button", { name: "Proteção" }));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/rotas seguras/i);
-    await userEvent.click(within(nav()).getByRole("button", { name: "Conquistas" }));
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/merece ser celebrada/i);
+    await userEvent.click(within(nav()).getByRole("button", { name: "Configurações" }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/seu universo/i);
   });
 
   it("Meus portais lista os portais da API", async () => {

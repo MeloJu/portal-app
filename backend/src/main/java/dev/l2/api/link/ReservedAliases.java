@@ -14,7 +14,7 @@ public final class ReservedAliases {
 
     private static final Set<String> RESERVED = Set.of(
             "api", "r", "assets", "otlp", "health", "login", "register", "index.html",
-            "dashboard", "tools", "healthz");
+            "dashboard", "tools", "healthz", "verificar-email");
 
     private ReservedAliases() {
     }

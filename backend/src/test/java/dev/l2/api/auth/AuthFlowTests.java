@@ -1,6 +1,7 @@
 package dev.l2.api.auth;
 
 import dev.l2.api.TestcontainersConfiguration;
+import dev.l2.api.user.User;
 import dev.l2.api.user.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import jakarta.servlet.http.Cookie;
+
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -127,6 +130,35 @@ class AuthFlowTests {
 				.andExpect(jsonPath("$.email").value("fabio@example.com"))
 				.andExpect(jsonPath("$.name").value("Fabio"))
 				.andExpect(jsonPath("$.id").isNotEmpty());
+	}
+
+	@Test
+	void newAccountIsUnverifiedInRegisterLoginAndMe() throws Exception {
+		MvcResult registered = register("Hugo", "hugo@example.com", "senha-bem-grande");
+
+		assertThat(registered.getResponse().getContentAsString()).contains("\"emailVerified\":false");
+
+		this.mvc.perform(post("/api/auth/login")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"email":"hugo@example.com","password":"senha-bem-grande"}"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.user.emailVerified").value(false));
+
+		this.mvc.perform(get("/api/me").cookie(session(registered)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.emailVerified").value(false));
+	}
+
+	@Test
+	void meReportsVerifiedAfterTheEmailIsMarkedVerified() throws Exception {
+		MvcResult registered = register("Iris", "iris@example.com", "senha-bem-grande");
+		User iris = this.users.findByEmail("iris@example.com").orElseThrow();
+		iris.markEmailVerified(Instant.parse("2026-10-15T12:00:00Z"));
+		this.users.save(iris);
+
+		this.mvc.perform(get("/api/me").cookie(session(registered)))
+				.andExpect(jsonPath("$.emailVerified").value(true));
 	}
 
 	@Test

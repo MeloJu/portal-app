@@ -26,10 +26,10 @@ public final class AuthDtos {
 
 	}
 
-	public record UserResponse(UUID id, String name, String email) {
+	public record UserResponse(UUID id, String name, String email, boolean emailVerified) {
 
 		public static UserResponse of(User user) {
-			return new UserResponse(user.getId(), user.getName(), user.getEmail());
+			return new UserResponse(user.getId(), user.getName(), user.getEmail(), user.isEmailVerified());
 		}
 
 	}

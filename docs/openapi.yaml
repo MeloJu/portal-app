@@ -297,6 +297,7 @@ components:
         id: { type: string, format: uuid }
         name: { type: string }
         email: { type: string }
+        emailVerified: { type: boolean }
     LinkState:
       type: string
       description: |

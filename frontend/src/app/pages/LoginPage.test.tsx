@@ -42,6 +42,8 @@ function renderLogin(initialEntry = "/login") {
   return router;
 }
 
+const GENERIC_OAUTH_MESSAGE = "Não foi possível entrar com o provedor. Tente novamente.";
+
 describe("LoginPage", () => {
   // Os mocks guardam as chamadas entre testes: sem isso, um "not.toHaveBeenCalled" pega a chamada do teste anterior.
   beforeEach(() => vi.clearAllMocks());
@@ -174,6 +176,7 @@ describe("LoginPage", () => {
     const assign = vi.fn();
 
     beforeEach(() => {
+      assign.mockClear();
       Object.defineProperty(window, "location", { configurable: true, value: { ...originalLocation, assign } });
     });
 
@@ -185,12 +188,14 @@ describe("LoginPage", () => {
       renderLogin();
       await userEvent.click(screen.getByRole("button", { name: "Continuar com Google" }));
       expect(assign).toHaveBeenCalledWith("/api/auth/oauth/google");
+      expect(assign).toHaveBeenCalledTimes(1);
     });
 
     it("o botão do GitHub navega para a rota OAuth do GitHub", async () => {
       renderLogin();
       await userEvent.click(screen.getByRole("button", { name: "Continuar com GitHub" }));
       expect(assign).toHaveBeenCalledWith("/api/auth/oauth/github");
+      expect(assign).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -203,11 +208,44 @@ describe("LoginPage", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(/não foi verificado/i);
     });
 
-    it("usa a mensagem genérica para código desconhecido", async () => {
+    it("usa a mensagem genérica para o erro do provedor", async () => {
       renderLogin("/login?oauth_error=OAUTH_PROVIDER_ERROR");
-      expect(await screen.findByRole("alert")).toHaveTextContent(
-        "Não foi possível entrar com o provedor. Tente novamente.",
-      );
+      expect(await screen.findByRole("alert")).toHaveTextContent(GENERIC_OAUTH_MESSAGE);
+    });
+
+    it.each(["__proto__", "constructor", "toString", "hasOwnProperty"])(
+      "nome herdado de Object.prototype (%s) cai na mensagem genérica",
+      async (code) => {
+        renderLogin(`/login?oauth_error=${code}`);
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent(GENERIC_OAUTH_MESSAGE);
+        expect(alert.textContent).toBe(GENERIC_OAUTH_MESSAGE);
+        expect(screen.getByRole("heading", { name: "Entre na sua estação" })).toBeInTheDocument();
+      },
+    );
+
+    it.each(["<img src=x onerror=alert(1)>", "Sua conta foi bloqueada, ligue 0800"])(
+      "valor arbitrário (%s) mostra a genérica e nunca o texto bruto",
+      async (raw) => {
+        const container = document.body;
+        renderLogin(`/login?oauth_error=${encodeURIComponent(raw)}`);
+        const alert = await screen.findByRole("alert");
+        expect(alert.textContent).toBe(GENERIC_OAUTH_MESSAGE);
+        expect(container.textContent).not.toContain(raw);
+        expect(container.innerHTML).not.toContain("onerror");
+      },
+    );
+
+    it("o alerta de OAuth some ao trocar para Criar conta", async () => {
+      renderLogin("/login?oauth_error=OAUTH_DENIED");
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Criar conta" }));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("mantém os outros parâmetros da URL depois de limpar o oauth_error", async () => {
+      const router = renderLogin("/login?oauth_error=OAUTH_DENIED&ref=abc");
+      await waitFor(() => expect(router.state.location.search).toBe("?ref=abc"));
     });
 
     it("sem o parâmetro não mostra erro", () => {

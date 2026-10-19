@@ -46,16 +46,16 @@ function errorMessage(mode: Mode, err: unknown): string {
   return err.message;
 }
 
-const OAUTH_ERROR_MESSAGES: Record<string, string> = {
-  OAUTH_EMAIL_UNVERIFIED: "Seu e-mail no provedor ainda não foi verificado. Verifique-o lá e tente de novo.",
-  OAUTH_DENIED: "Você cancelou o acesso no provedor. Tente de novo quando quiser.",
-  OAUTH_STATE_INVALID: "A tentativa de login expirou. Tente entrar de novo.",
-  OAUTH_DISABLED: "Este login não está disponível no momento. Entre com e-mail e senha.",
-};
+const OAUTH_ERROR_MESSAGES: ReadonlyMap<string, string> = new Map([
+  ["OAUTH_EMAIL_UNVERIFIED", "Seu e-mail no provedor ainda não foi verificado. Verifique-o lá e tente de novo."],
+  ["OAUTH_DENIED", "Você cancelou o acesso no provedor. Tente de novo quando quiser."],
+  ["OAUTH_STATE_INVALID", "A tentativa de login expirou. Tente entrar de novo."],
+  ["OAUTH_DISABLED", "Este login não está disponível no momento. Entre com e-mail e senha."],
+]);
 const OAUTH_GENERIC_MESSAGE = "Não foi possível entrar com o provedor. Tente novamente.";
 
 function oauthErrorMessage(code: string): string {
-  return OAUTH_ERROR_MESSAGES[code] ?? OAUTH_GENERIC_MESSAGE;
+  return OAUTH_ERROR_MESSAGES.get(code) ?? OAUTH_GENERIC_MESSAGE;
 }
 
 function startOAuth(provider: "google" | "github") {

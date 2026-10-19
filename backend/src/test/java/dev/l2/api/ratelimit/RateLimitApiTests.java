@@ -35,7 +35,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		"app.rate-limit.travel.capacity=2",
 		"app.rate-limit.travel.window=1m",
 		"app.rate-limit.verify-email.capacity=2",
-		"app.rate-limit.verify-email.window=1m" })
+		"app.rate-limit.verify-email.window=1m",
+		"app.rate-limit.account-code.capacity=2",
+		"app.rate-limit.account-code.window=1m",
+		"app.rate-limit.account-change.capacity=2",
+		"app.rate-limit.account-change.window=1m" })
 class RateLimitApiTests {
 
 	private static final String PASSWORD = "senha-bem-grande";
@@ -72,6 +76,38 @@ class RateLimitApiTests {
 				.andExpect(jsonPath("$.code").value("RATE_LIMIT"));
 
 		verifyEmail("10.1.0.10").andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void blocksTheThirdAccountCodeRequestAndTheThirdAccountChangeFromTheSameAddress() throws Exception {
+		Cookie session = register("10.1.0.20").cookie();
+		String address = "10.1.0.21";
+
+		for (String path : new String[] { "/api/account/codes", "/api/account/email" }) {
+			accountPost(path, session, address).andExpect(status().isBadRequest());
+			accountPost(path, session, address).andExpect(status().isBadRequest());
+			accountPost(path, session, address)
+					.andExpect(status().isTooManyRequests())
+					.andExpect(header().exists(HttpHeaders.RETRY_AFTER))
+					.andExpect(jsonPath("$.code").value("RATE_LIMIT"));
+		}
+
+		accountPost("/api/account/codes", session, "10.1.0.22").andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void emailAndPasswordChangesShareTheSameBudgetPerAddress() throws Exception {
+		Cookie session = register("10.1.0.30").cookie();
+		String address = "10.1.0.31";
+
+		accountPost("/api/account/email", session, address).andExpect(status().isBadRequest());
+		accountPost("/api/account/password", session, address).andExpect(status().isBadRequest());
+
+		accountPost("/api/account/password", session, address)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMIT"));
+		accountPost("/api/account/email", session, address).andExpect(status().isTooManyRequests());
+		accountPost("/api/account/password", session, "10.1.0.32").andExpect(status().isBadRequest());
 	}
 
 	@Test
@@ -174,6 +210,15 @@ class RateLimitApiTests {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"email":"%s","password":"%s"}""".formatted(email, PASSWORD)));
+	}
+
+	private org.springframework.test.web.servlet.ResultActions accountPost(String path, Cookie session,
+			String address) throws Exception {
+		return this.mvc.perform(post(path)
+				.cookie(session)
+				.with(from(address))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{}"));
 	}
 
 	private org.springframework.test.web.servlet.ResultActions verifyEmail(String address) throws Exception {

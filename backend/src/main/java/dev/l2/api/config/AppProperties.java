@@ -65,18 +65,31 @@ public record AppProperties(
 
 			@DefaultValue @Valid Rule travel,
 
-			@Valid Rule verifyEmail) {
+			@Valid Rule verifyEmail,
+
+			@Valid Rule accountCode,
+
+			@Valid Rule accountChange) {
 
 		static final Rule DEFAULT_VERIFY_EMAIL = new Rule(20, Duration.ofMinutes(1));
+
+		static final Rule DEFAULT_ACCOUNT = new Rule(10, Duration.ofMinutes(1));
 
 		public RateLimit {
 			if (verifyEmail == null) {
 				verifyEmail = DEFAULT_VERIFY_EMAIL;
 			}
+			if (accountCode == null) {
+				accountCode = DEFAULT_ACCOUNT;
+			}
+			if (accountChange == null) {
+				accountChange = DEFAULT_ACCOUNT;
+			}
 		}
 
 		public Duration longestWindow() {
-			return Stream.of(this.login, this.register, this.travel, this.verifyEmail)
+			return Stream.of(this.login, this.register, this.travel, this.verifyEmail, this.accountCode,
+					this.accountChange)
 					.map(Rule::window)
 					.max(Duration::compareTo)
 					.orElseThrow();

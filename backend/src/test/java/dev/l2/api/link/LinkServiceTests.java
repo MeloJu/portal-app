@@ -1,6 +1,8 @@
 package dev.l2.api.link;
 
+import dev.l2.api.EmailVerification;
 import dev.l2.api.TestcontainersConfiguration;
+import dev.l2.api.auth.EmailNotVerifiedException;
 import dev.l2.api.link.LinkDtos.CreateLinkRequest;
 import dev.l2.api.metrics.L2Metrics;
 import dev.l2.api.security.BlockedEvent;
@@ -55,8 +57,15 @@ class LinkServiceTests {
 		this.events.deleteAll();
 		this.links.deleteAll();
 		this.users.deleteAll();
-		this.ana = this.users.save(new User(unique() + "-ana@example.com", hash(), "Ana")).getId();
-		this.bruno = this.users.save(new User(unique() + "-bruno@example.com", hash(), "Bruno")).getId();
+		this.ana = verifiedUser("ana");
+		this.bruno = verifiedUser("bruno");
+	}
+
+	private UUID verifiedUser(String name) {
+		String email = unique() + "-" + name + "@example.com";
+		UUID id = this.users.save(new User(email, hash(), name)).getId();
+		EmailVerification.verify(this.users, email);
+		return id;
 	}
 
 	private static String hash() {
@@ -74,6 +83,16 @@ class LinkServiceTests {
 	private double blockedCount(BlockedEventReason reason) {
 		Counter counter = this.registry.find(L2Metrics.THREATS_BLOCKED).tag("reason", reason.name()).counter();
 		return (counter == null) ? 0 : counter.count();
+	}
+
+	@Test
+	void refusesToCreateWhenTheOwnerEmailIsNotVerified() {
+		UUID unverified = this.users.save(new User(unique() + "-novo@example.com", hash(), "Novo")).getId();
+
+		assertThatThrownBy(() -> this.service.create(unverified, request("javascript:alert(1)", null)))
+				.isInstanceOf(EmailNotVerifiedException.class);
+
+		assertThat(this.links.findByOwnerId(unverified, this.firstPage).getContent()).isEmpty();
 	}
 
 	@Test

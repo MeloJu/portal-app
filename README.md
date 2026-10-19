@@ -160,7 +160,9 @@ Nos testes, importe `TestEmailConfiguration` para capturar as mensagens no `Reco
 
 O E2E sobe o backend e o Vite do próprio checkout, com rate limit desligado e um `JWT_SECRET` gerado na
 hora. As portas `5173`, `8080` e `8081` precisam estar livres. Se falhar no CI, os traces do Playwright
-ficam no artefato `playwright-traces`. Antes de um PR que mexa em sessão, portais, Travessia ou Proteção,
+ficam no artefato `playwright-traces`. Os testes marcam o usuário registrado como verificado direto no banco
+(`users.email_verified_at`); a conexão usa `E2E_DB_HOST`, `E2E_DB_PORT`, `E2E_DB_NAME`, `E2E_DB_USER` e
+`E2E_DB_PASSWORD`, com padrão `localhost:5432` e banco e usuário `lumi`, igual ao `docker compose` e ao CI. Antes de um PR que mexa em sessão, portais, Travessia ou Proteção,
 siga o [roteiro manual](docs/integracao/roteiro-manual.md) (dez passos no navegador).
 
 ### API

@@ -71,6 +71,40 @@ paths:
           description: Sessão encerrada
           headers:
             Set-Cookie: { $ref: '#/components/headers/ExpiredSessionCookie' }
+  /api/auth/verify-email:
+    post:
+      tags: [auth]
+      security: []
+      summary: Confirma o e-mail com o token recebido por e-mail
+      description: |
+        Pública: o link `{PUBLIC_BASE_URL}/verificar-email?token=...` pode ser aberto sem
+        sessão. O token vale por 30 minutos e só uma vez; só o hash fica no banco.
+        Conta não verificada continua podendo entrar e usar a API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerifyEmailRequest' }
+      responses:
+        '204': { description: E-mail confirmado }
+        '400':
+          description: |
+            `TOKEN_INVALID` (inexistente, adulterado ou já usado), `TOKEN_EXPIRED` ou
+            `VALIDATION_ERROR` (token vazio ou com mais de 100 caracteres).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /api/auth/resend-verification:
+    post:
+      tags: [auth]
+      summary: Reenvia o link de confirmação do e-mail
+      description: |
+        Invalida o link anterior. No máximo 1 envio a cada 60 segundos e 5 por hora por
+        Usuário (o e-mail do cadastro conta como o primeiro).
+      responses:
+        '204': { description: Novo link enviado }
+        '401': { description: Sem cookie de sessão ou sessão inválida }
+        '409': { description: E-mail já confirmado (`ALREADY_VERIFIED`), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /api/me:
     get:
       tags: [auth]
@@ -92,6 +126,7 @@ paths:
       responses:
         '201': { description: Criado, content: { application/json: { schema: { $ref: '#/components/schemas/Link' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { description: E-mail da conta ainda não confirmado (code EMAIL_NOT_VERIFIED), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '409': { description: Alias já em uso, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
     get:
       tags: [links]
@@ -285,6 +320,11 @@ components:
       properties:
         email: { type: string, format: email }
         password: { type: string }
+    VerifyEmailRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, maxLength: 100 }
     AuthResponse:
       type: object
       description: O token não vem no corpo; viaja no cookie de sessão.

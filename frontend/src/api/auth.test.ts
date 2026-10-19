@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AuthError, currentUser, login, logout, register } from "./auth";
+import { AuthError, currentUser, login, logout, register, resendVerification } from "./auth";
 import { isApiOffline } from "./offline";
 
-const user = { id: "u1", name: "Ana Martins", email: "ana@lumi.dev" };
+const user = { id: "u1", name: "Ana Martins", email: "ana@lumi.dev", emailVerified: true };
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
@@ -103,5 +103,45 @@ describe("auth", () => {
     vi.stubGlobal("fetch", fetchMock);
     await logout();
     expect(fetchMock).toHaveBeenCalledWith("/api/auth/logout", expect.objectContaining({ method: "POST" }));
+  });
+
+  it("reenvia a verificação por POST autenticado e aceita 204", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(resendVerification()).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/auth/resend-verification",
+      expect.objectContaining({ method: "POST", credentials: "same-origin" }),
+    );
+  });
+
+  it("expõe o Retry-After do 429 e o getter isRateLimited", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ code: "RATE_LIMIT", message: "x" }), {
+          status: 429,
+          headers: { "content-type": "application/json", "retry-after": "45" },
+        }),
+      ),
+    );
+    const err = await resendVerification().catch((e) => e);
+    expect(err).toBeInstanceOf(AuthError);
+    expect(err.isRateLimited).toBe(true);
+    expect(err.retryAfterSeconds).toBe(45);
+  });
+
+  it("429 sem Retry-After válido deixa retryAfterSeconds nulo", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(429, { code: "RATE_LIMIT", message: "x" })));
+    const err = await resendVerification().catch((e) => e);
+    expect(err.retryAfterSeconds).toBeNull();
+  });
+
+  it("409 vira isEmailAlreadyVerified", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(409, { code: "ALREADY_VERIFIED", message: "x" })));
+    const err = await resendVerification().catch((e) => e);
+    expect(err.isEmailAlreadyVerified).toBe(true);
+    expect(err.isRateLimited).toBe(false);
+    expect(err.code).toBe("ALREADY_VERIFIED");
   });
 });

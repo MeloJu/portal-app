@@ -1,7 +1,9 @@
 package dev.l2.api.travel;
 
 import dev.l2.api.TestcontainersConfiguration;
+import dev.l2.api.EmailVerification;
 import dev.l2.api.auth.SessionCookie;
+import dev.l2.api.user.UserRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = "app.rate-limit.enabled=false")
 class TravelApiTests {
 
+	@Autowired
+	private UserRepository users;
+
 	private static final String CHROME = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 			+ "(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36";
 
@@ -36,7 +41,7 @@ class TravelApiTests {
 
 	private Cookie session() throws Exception {
 		String email = "u" + unique() + "@example.com";
-		return this.mvc.perform(post("/api/auth/register")
+		Cookie cookie = this.mvc.perform(post("/api/auth/register")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"name":"Ana","email":"%s","password":"senha-bem-grande"}""".formatted(email)))
@@ -44,6 +49,8 @@ class TravelApiTests {
 				.andReturn()
 				.getResponse()
 				.getCookie(SessionCookie.NAME);
+		EmailVerification.verify(this.users, email);
+		return cookie;
 	}
 
 	private static String unique() {

@@ -1,7 +1,9 @@
 package dev.l2.api.link;
 
 import dev.l2.api.TestcontainersConfiguration;
+import dev.l2.api.EmailVerification;
 import dev.l2.api.auth.SessionCookie;
+import dev.l2.api.user.UserRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,10 +30,30 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class LinkApiTests {
 
 	@Autowired
+	private UserRepository users;
+
+	@Autowired
 	private MockMvc mvc;
 
 	private Cookie session() throws Exception {
 		String email = "u" + UUID.randomUUID().toString().replace("-", "").substring(0, 12) + "@example.com";
+		Cookie cookie = this.mvc.perform(post("/api/auth/register")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"name":"Ana","email":"%s","password":"senha-bem-grande"}""".formatted(email)))
+				.andExpect(status().isCreated())
+				.andReturn()
+				.getResponse()
+				.getCookie(SessionCookie.NAME);
+		EmailVerification.verify(this.users, email);
+		return cookie;
+	}
+
+	private static String newEmail() {
+		return "u" + UUID.randomUUID().toString().replace("-", "").substring(0, 12) + "@example.com";
+	}
+
+	private Cookie unverifiedSession(String email) throws Exception {
 		return this.mvc.perform(post("/api/auth/register")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -58,6 +80,35 @@ class LinkApiTests {
 				{"targetUrl":"example.com/campanha","alias":"%s"}""".formatted(alias))
 				.andExpect(status().isCreated());
 		return alias;
+	}
+
+	@Test
+	void refusesToCreateALinkWhileTheEmailIsNotVerified() throws Exception {
+		Cookie session = unverifiedSession(newEmail());
+		String alias = code();
+
+		create(session, """
+				{"targetUrl":"example.com/campanha","alias":"%s"}""".formatted(alias))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("EMAIL_NOT_VERIFIED"))
+				.andExpect(jsonPath("$.message").value("Confirme seu e-mail para criar portais."));
+
+		this.mvc.perform(get("/api/links").cookie(session))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalItems").value(0));
+		this.mvc.perform(get("/api/me").cookie(session))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.emailVerified").value(false));
+	}
+
+	@Test
+	void createsTheLinkAfterTheEmailIsVerified() throws Exception {
+		String email = newEmail();
+		Cookie session = unverifiedSession(email);
+		String alias = code();
+		EmailVerification.verify(this.users, email);
+
+		createLink(session, alias);
 	}
 
 	@Test

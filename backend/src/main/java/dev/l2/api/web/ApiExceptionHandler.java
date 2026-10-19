@@ -5,10 +5,16 @@ import dev.l2.api.account.CodeExpiredException;
 import dev.l2.api.account.CodeInvalidException;
 import dev.l2.api.account.CodeRequestTooSoonException;
 import dev.l2.api.auth.EmailAlreadyUsedException;
+import dev.l2.api.auth.EmailNotVerifiedException;
 import dev.l2.api.auth.InvalidCredentialsException;
+import dev.l2.api.auth.verification.AlreadyVerifiedException;
+import dev.l2.api.auth.verification.ResendTooSoonException;
+import dev.l2.api.auth.verification.VerificationTokenExpiredException;
+import dev.l2.api.auth.verification.VerificationTokenInvalidException;
 import dev.l2.api.link.AliasAlreadyUsedException;
 import dev.l2.api.link.InvalidLinkException;
 import dev.l2.api.link.LinkNotFoundException;
+import java.time.Duration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +52,11 @@ public class ApiExceptionHandler {
 		return body(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", exception.getMessage());
 	}
 
+	@ExceptionHandler(EmailNotVerifiedException.class)
+	public ResponseEntity<ErrorResponse> onEmailNotVerified(EmailNotVerifiedException exception) {
+		return body(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED", exception.getMessage());
+	}
+
 	@ExceptionHandler(InvalidLinkException.class)
 	public ResponseEntity<ErrorResponse> onInvalidLink(InvalidLinkException exception) {
 		return body(HttpStatus.BAD_REQUEST, exception.getReason().name(), exception.getMessage());
@@ -66,6 +77,26 @@ public class ApiExceptionHandler {
 		return body(HttpStatus.CONFLICT, "ALIAS_TAKEN", exception.getMessage());
 	}
 
+	@ExceptionHandler(VerificationTokenInvalidException.class)
+	public ResponseEntity<ErrorResponse> onTokenInvalid(VerificationTokenInvalidException exception) {
+		return body(HttpStatus.BAD_REQUEST, "TOKEN_INVALID", exception.getMessage());
+	}
+
+	@ExceptionHandler(VerificationTokenExpiredException.class)
+	public ResponseEntity<ErrorResponse> onTokenExpired(VerificationTokenExpiredException exception) {
+		return body(HttpStatus.BAD_REQUEST, "TOKEN_EXPIRED", exception.getMessage());
+	}
+
+	@ExceptionHandler(AlreadyVerifiedException.class)
+	public ResponseEntity<ErrorResponse> onAlreadyVerified(AlreadyVerifiedException exception) {
+		return body(HttpStatus.CONFLICT, "ALREADY_VERIFIED", exception.getMessage());
+	}
+
+	@ExceptionHandler(ResendTooSoonException.class)
+	public ResponseEntity<ErrorResponse> onResendTooSoon(ResendTooSoonException exception) {
+		return rateLimited(exception.getRetryAfter(), exception.getMessage());
+	}
+
 	@ExceptionHandler(CodeInvalidException.class)
 	public ResponseEntity<ErrorResponse> onCodeInvalid(CodeInvalidException exception) {
 		return body(HttpStatus.BAD_REQUEST, "CODE_INVALID", exception.getMessage());
@@ -83,9 +114,14 @@ public class ApiExceptionHandler {
 
 	@ExceptionHandler(CodeRequestTooSoonException.class)
 	public ResponseEntity<ErrorResponse> onCodeRequestTooSoon(CodeRequestTooSoonException exception) {
+		return rateLimited(exception.retryAfter(), exception.getMessage());
+	}
+
+	private static ResponseEntity<ErrorResponse> rateLimited(Duration retryAfter, String message) {
+		long seconds = Math.max(retryAfter.plusMillis(999).toSeconds(), 1);
 		return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-				.header(HttpHeaders.RETRY_AFTER, String.valueOf(exception.retryAfterSeconds()))
-				.body(new ErrorResponse("RATE_LIMIT", exception.getMessage()));
+				.header(HttpHeaders.RETRY_AFTER, Long.toString(seconds))
+				.body(new ErrorResponse("RATE_LIMIT", message));
 	}
 
 	private static String describe(FieldError error) {

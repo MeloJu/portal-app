@@ -63,10 +63,20 @@ public record AppProperties(
 
 			@DefaultValue @Valid Rule register,
 
-			@DefaultValue @Valid Rule travel) {
+			@DefaultValue @Valid Rule travel,
+
+			@Valid Rule verifyEmail) {
+
+		static final Rule DEFAULT_VERIFY_EMAIL = new Rule(20, Duration.ofMinutes(1));
+
+		public RateLimit {
+			if (verifyEmail == null) {
+				verifyEmail = DEFAULT_VERIFY_EMAIL;
+			}
+		}
 
 		public Duration longestWindow() {
-			return Stream.of(this.login, this.register, this.travel)
+			return Stream.of(this.login, this.register, this.travel, this.verifyEmail)
 					.map(Rule::window)
 					.max(Duration::compareTo)
 					.orElseThrow();

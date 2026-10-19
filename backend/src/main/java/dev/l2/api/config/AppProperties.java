@@ -35,11 +35,19 @@ public record AppProperties(
 
 	private static final int MINIMUM_SECRET_BYTES = 32;
 
+	static final String DEFAULT_MAIL_FROM = "no-reply@lumi.local";
+
 	public record Mail(
 
 			@DefaultValue("false") boolean enabled,
 
-			@DefaultValue("no-reply@lumi.local") @NotBlank String from) {
+			@DefaultValue(DEFAULT_MAIL_FROM) String from) {
+
+		public Mail {
+			if (from == null || from.isBlank()) {
+				from = DEFAULT_MAIL_FROM;
+			}
+		}
 
 	}
 

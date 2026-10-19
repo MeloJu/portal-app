@@ -11,6 +11,10 @@ public class LoggingEmailSender implements EmailSender {
 
 	private static final Logger log = LoggerFactory.getLogger(LoggingEmailSender.class);
 
+	public LoggingEmailSender() {
+		log.warn("E-mail desligado (app.mail.enabled=false): os corpos, com links e codigos, vao para o log");
+	}
+
 	@Override
 	public void send(OutgoingEmail message) {
 		log.info("E-mail simulado (app.mail.enabled=false)\nPara: {}\nAssunto: {}\n\n{}",

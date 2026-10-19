@@ -119,6 +119,9 @@ Sem isso, `/actuator/prometheus` fica público.
 | `api` | decidido |
 
 - Não logar body de `/api/auth/**`.
+- O corpo do e-mail (com link e código) só vai ao log com `MAIL_ENABLED=false`, ou seja, fora de produção.
+- A falha de envio de e-mail registra só o assunto e a classe da exceção, nunca a exceção inteira (mensagem
+  ou stack trace): ninguém troca isso por `log.warn(..., failure)` "pra debugar".
 - O agente OTel não captura o header `Authorization` por padrão — manter assim (ou seja:
   ninguém adiciona isso a uma allowlist de headers "pra debugar").
 

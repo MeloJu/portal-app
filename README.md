@@ -142,8 +142,10 @@ no `.env`. **Nunca desabilite isso em produção.**
 
 Com `MAIL_ENABLED=false` (o padrão em dev e nos testes) nada sai pela rede: o `LoggingEmailSender` escreve
 destinatário, assunto e corpo no log. Para enviar de verdade, ponha `MAIL_ENABLED=true` e preencha
-`MAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` e `SMTP_PASSWORD` (`SMTP_STARTTLS=true` na porta 587).
+`MAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` e `SMTP_PASSWORD` (`SMTP_STARTTLS=true` na porta 587; `SMTP_AUTH=false` só para relay interno sem login).
 O envio é assíncrono e falha sem derrubar a requisição: o erro vira um `WARN` sem corpo, código ou token.
+Se `MAIL_ENABLED` faltar, a API sobe com o envio simulado e avisa com `WARN`: no cluster, `MAIL_ENABLED=true`
+no `l2-config` é pré-requisito para os fluxos de verificação, senão links e códigos vão para o log.
 Nos testes, importe `TestEmailConfiguration` para capturar as mensagens no `RecordingEmailSender`.
 
 ## 🧪 Como testar

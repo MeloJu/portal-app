@@ -96,7 +96,8 @@ class AppPropertiesTest {
 	void mailDefaultsToDisabledWithLocalSender() {
 		runner.withPropertyValues(
 				"app.public-base-url=https://l2.to",
-				"app.jwt.secret=" + STRONG_SECRET)
+				"app.jwt.secret=" + STRONG_SECRET,
+				"app.codes.pepper=" + STRONG_PEPPER)
 				.run(context -> {
 					AppProperties.Mail mail = context.getBean(AppProperties.class).mail();
 					assertThat(mail.enabled()).isFalse();
@@ -105,10 +106,24 @@ class AppPropertiesTest {
 	}
 
 	@Test
+	void blankMailFromFallsBackToDefault() {
+		runner.withPropertyValues(
+				"app.public-base-url=https://l2.to",
+				"app.jwt.secret=" + STRONG_SECRET,
+				"app.codes.pepper=" + STRONG_PEPPER,
+				"app.mail.from=")
+				.run(context -> {
+					assertThat(context).hasNotFailed();
+					assertThat(context.getBean(AppProperties.class).mail().from()).isEqualTo("no-reply@lumi.local");
+				});
+	}
+
+	@Test
 	void mailBindsOverrides() {
 		runner.withPropertyValues(
 				"app.public-base-url=https://l2.to",
 				"app.jwt.secret=" + STRONG_SECRET,
+				"app.codes.pepper=" + STRONG_PEPPER,
 				"app.mail.enabled=true",
 				"app.mail.from=lumi@example.com")
 				.run(context -> {

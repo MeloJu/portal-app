@@ -74,7 +74,7 @@ class RateLimiterTests {
 
 	private static AppProperties properties() {
 		RateLimit limits = new RateLimit(true, TWO_PER_MINUTE, TWO_PER_MINUTE, TWO_PER_MINUTE);
-		return new AppProperties("https://l2.to", null, null, null, limits);
+		return new AppProperties("https://l2.to", null, null, null, limits, null);
 	}
 
 	private static final class MutableClock extends Clock {

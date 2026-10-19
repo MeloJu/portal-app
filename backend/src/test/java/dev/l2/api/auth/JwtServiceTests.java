@@ -31,7 +31,7 @@ class JwtServiceTests {
 	}
 
 	private JwtService service(String secret, Duration ttl, Clock clock) {
-		return new JwtService(new AppProperties("https://l2.to", new AppProperties.Jwt(secret, ttl), null, new AppProperties.Session(true), null), clock);
+		return new JwtService(new AppProperties("https://l2.to", new AppProperties.Jwt(secret, ttl), null, new AppProperties.Session(true), null, null), clock);
 	}
 
 	private String issue(JwtService service) {

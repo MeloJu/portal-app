@@ -25,6 +25,8 @@ public record AppProperties(
 
 		@NotNull @Valid Jwt jwt,
 
+		@NotNull @Valid Codes codes,
+
 		@DefaultValue @Valid Session session,
 
 		@DefaultValue @Valid RateLimit rateLimit) {
@@ -62,6 +64,15 @@ public record AppProperties(
 
 	}
 
+	private static byte[] decode(String value) {
+		try {
+			return Base64.getDecoder().decode(value);
+		}
+		catch (IllegalArgumentException notBase64) {
+			return value.getBytes(StandardCharsets.UTF_8);
+		}
+	}
+
 	public record Jwt(@NotBlank String secret, @DefaultValue("8h") Duration ttl) {
 
 		@AssertTrue(message = "deve ter no minimo 256 bits (openssl rand -base64 32)")
@@ -70,12 +81,20 @@ public record AppProperties(
 		}
 
 		public byte[] secretBytes() {
-			try {
-				return Base64.getDecoder().decode(secret);
-			}
-			catch (IllegalArgumentException notBase64) {
-				return secret.getBytes(StandardCharsets.UTF_8);
-			}
+			return decode(secret);
+		}
+
+	}
+
+	public record Codes(@NotBlank String pepper) {
+
+		@AssertTrue(message = "deve ter no minimo 256 bits (openssl rand -base64 32)")
+		public boolean isPepperStrongEnough() {
+			return pepper != null && pepperBytes().length >= MINIMUM_SECRET_BYTES;
+		}
+
+		public byte[] pepperBytes() {
+			return decode(pepper);
 		}
 
 	}

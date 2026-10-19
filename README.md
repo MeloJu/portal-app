@@ -93,7 +93,7 @@ O front fala com a API **pela mesma origem** (o Vite em desenvolvimento e o ngin
 
 ### Backend
 
-Escolha uma das opções. Ambas criam o `.env` se faltar, geram um `JWT_SECRET`, sobem o PostgreSQL pelo
+Escolha uma das opções. Ambas criam o `.env` se faltar, geram um `JWT_SECRET` e um `APP_CODE_PEPPER`, sobem o PostgreSQL pelo
 Docker Compose, esperam o healthcheck e iniciam a API.
 
 **Opção A: Docker** (sem Java instalado; a primeira execução demora por causa do build)
@@ -110,8 +110,8 @@ Docker Compose, esperam o healthcheck e iniciam a API.
 
 > **Por que usar os scripts?** O Spring Boot **não** lê o `.env`; quem o interpreta é o Docker Compose.
 > Rodar `./mvnw spring-boot:run` direto deixa `DB_URL` vazio e dá `'url' must start with "jdbc"`. Os
-> scripts carregam as variáveis no processo. O backend exige `JWT_SECRET` com ao menos 256 bits e falha
-> ao iniciar se ele faltar.
+> scripts carregam as variáveis no processo. O backend exige `JWT_SECRET` e `APP_CODE_PEPPER` com ao menos
+> 256 bits cada e falha ao iniciar se algum faltar.
 
 ### Frontend e tools-api
 
@@ -171,7 +171,7 @@ O contrato está em [`docs/openapi.yaml`](docs/openapi.yaml) e a documentação 
 cd backend && docker build -t l2-api:dev .
 docker run --rm -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp \
   -e DB_URL=jdbc:postgresql://host.docker.internal:5432/lumi -e DB_USER=lumi -e DB_PASSWORD=lumi \
-  -e PUBLIC_BASE_URL=http://localhost:8080 -e JWT_SECRET="$(openssl rand -base64 32)" l2-api:dev
+  -e PUBLIC_BASE_URL=http://localhost:8080 -e JWT_SECRET="$(openssl rand -base64 32)" \n  -e APP_CODE_PEPPER="$(openssl rand -base64 32)" l2-api:dev
 curl http://localhost:8081/actuator/health      # {"status":"UP"}
 ```
 
@@ -188,6 +188,19 @@ publica no GHCR:
 
 Em PR as imagens só são construídas e escaneadas. As tags são `sha-<7 do commit>` (imutável, é a que vai
 para o cluster) e o nome da branch.
+
+### E-mail e segredos de produção
+
+| Variável | Para quê | Obrigatória |
+|---|---|---|
+| `APP_CODE_PEPPER` | pepper dos códigos de verificação, ao menos 256 bits (`openssl rand -base64 32`) | sim; a app não sobe sem ele |
+| `MAIL_ENABLED` | liga o envio de e-mail (`false` por padrão) | não |
+| `MAIL_FROM` | remetente | com e-mail ligado |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | servidor SMTP | com e-mail ligado |
+
+No cluster, `APP_CODE_PEPPER` e `SMTP_*` (junto de `JWT_SECRET`) vivem em um Secret do `portal-gitops`
+(`apps/l2`), selado, e entram no Deployment do backend por `envFrom`/`secretKeyRef`. Esses valores
+**não vão ao Git** deste repositório: aqui só existe o `.env.example`, com valores vazios.
 
 ### Do commit ao cluster
 

@@ -28,6 +28,8 @@ public class TestcontainersConfiguration {
 			registry.add("PUBLIC_BASE_URL", () -> "http://localhost:8080");
 			registry.add("JWT_SECRET", () -> Base64.getEncoder()
 					.encodeToString("chave-de-teste-com-32-bytes-ok!!".getBytes(StandardCharsets.UTF_8)));
+			registry.add("APP_CODE_PEPPER", () -> Base64.getEncoder()
+					.encodeToString("pepper-de-teste-com-32-bytes-ok!".getBytes(StandardCharsets.UTF_8)));
 		};
 	}
 

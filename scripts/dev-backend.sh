@@ -9,20 +9,26 @@ if [ ! -f .env ]; then
 	cp .env.example .env
 fi
 
-current_secret=$(sed -nE 's/^JWT_SECRET=[[:space:]]*(.*)$/\1/p' .env | tail -1 | tr -d '\r')
+ensure_secret() {
+	name=$1
+	current_secret=$(sed -nE "s/^${name}=[[:space:]]*(.*)\$/\1/p" .env | tail -1 | tr -d '\r')
 
-if [ -z "$current_secret" ]; then
-	echo "==> JWT_SECRET vazio; gerando um"
-	secret=$(openssl rand -base64 32 2>/dev/null || head -c 32 /dev/urandom | base64 | tr -d '\n')
-	tmp=$(mktemp)
-	if grep -q '^JWT_SECRET=' .env; then
-		awk -v s="$secret" '/^JWT_SECRET=/ { print "JWT_SECRET=" s; next } { print }' .env >"$tmp"
-	else
-		cat .env >"$tmp"
-		printf 'JWT_SECRET=%s\n' "$secret" >>"$tmp"
+	if [ -z "$current_secret" ]; then
+		echo "==> $name vazio; gerando um"
+		secret=$(openssl rand -base64 32 2>/dev/null || head -c 32 /dev/urandom | base64 | tr -d '\n')
+		tmp=$(mktemp)
+		if grep -q "^${name}=" .env; then
+			awk -v n="$name" -v s="$secret" 'index($0, n "=") == 1 { print n "=" s; next } { print }' .env >"$tmp"
+		else
+			cat .env >"$tmp"
+			printf '%s=%s\n' "$name" "$secret" >>"$tmp"
+		fi
+		mv "$tmp" .env
 	fi
-	mv "$tmp" .env
-fi
+}
+
+ensure_secret JWT_SECRET
+ensure_secret APP_CODE_PEPPER
 
 tmp_env=$(mktemp)
 tr -d '\r' <.env >"$tmp_env"

@@ -1,5 +1,5 @@
-import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router";
+import { FormEvent, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import { AuthError, login, register } from "../../api/auth";
 import lumiLogo from "../../assets/lumi-logo-v2.png";
 import lumiPortalBackground from "../../assets/lumi-portal-bg.png";
@@ -46,16 +46,43 @@ function errorMessage(mode: Mode, err: unknown): string {
   return err.message;
 }
 
+const OAUTH_ERROR_MESSAGES: ReadonlyMap<string, string> = new Map([
+  ["OAUTH_EMAIL_UNVERIFIED", "Seu e-mail no provedor ainda não foi verificado. Verifique-o lá e tente de novo."],
+  ["OAUTH_DENIED", "Você cancelou o acesso no provedor. Tente de novo quando quiser."],
+  ["OAUTH_STATE_INVALID", "A tentativa de login expirou. Tente entrar de novo."],
+  ["OAUTH_DISABLED", "Este login não está disponível no momento. Entre com e-mail e senha."],
+]);
+const OAUTH_GENERIC_MESSAGE = "Não foi possível entrar com o provedor. Tente novamente.";
+
+function oauthErrorMessage(code: string): string {
+  return OAUTH_ERROR_MESSAGES.get(code) ?? OAUTH_GENERIC_MESSAGE;
+}
+
+function startOAuth(provider: "google" | "github") {
+  window.location.assign(`/api/auth/oauth/${provider}`);
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => {
+    const code = searchParams.get("oauth_error");
+    return code ? oauthErrorMessage(code) : "";
+  });
   const [loading, setLoading] = useState(false);
   const text = copy[mode];
+
+  useEffect(() => {
+    if (!searchParams.has("oauth_error")) return;
+    const rest = new URLSearchParams(searchParams);
+    rest.delete("oauth_error");
+    setSearchParams(rest, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -199,11 +226,11 @@ export default function LoginPage() {
             <span>ou continue com</span>
           </div>
           <div className="social-login">
-            <button type="button">
-              <b>G</b> Google
+            <button aria-label="Continuar com Google" onClick={() => startOAuth("google")} type="button">
+              <b aria-hidden="true">G</b> Google
             </button>
-            <button type="button">
-              <b>GH</b> GitHub
+            <button aria-label="Continuar com GitHub" onClick={() => startOAuth("github")} type="button">
+              <b aria-hidden="true">GH</b> GitHub
             </button>
           </div>
           <p className="signup-copy">

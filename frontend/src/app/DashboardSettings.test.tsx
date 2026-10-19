@@ -14,7 +14,7 @@ vi.mocked(dashboard.getOverview).mockResolvedValue({
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
-let currentUser: { id: string; name: string; email: string; emailVerified: boolean };
+let currentUser: { id: string; name: string; email: string; emailVerified: boolean; hasPassword: boolean };
 let loaderCalls: number;
 
 function renderSettings() {
@@ -46,7 +46,7 @@ async function openSettings() {
 describe("Dashboard > Configurações", () => {
   beforeEach(() => {
     loaderCalls = 0;
-    currentUser = { id: "u1", name: "Ana Martins", email: "ana@lumi.dev", emailVerified: true };
+    currentUser = { id: "u1", name: "Ana Martins", email: "ana@lumi.dev", emailVerified: true, hasPassword: true };
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string) => {
@@ -82,6 +82,17 @@ describe("Dashboard > Configurações", () => {
     expect(screen.getByRole("heading", { name: "Senha de acesso" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Trocar senha" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Trocar e-mail" })).not.toBeInTheDocument();
+  });
+
+  it("conta sem senha esconde Trocar senha e Trocar e-mail com texto explicativo", async () => {
+    currentUser = { ...currentUser, hasPassword: false };
+    renderSettings();
+    await openSettings();
+    expect(screen.queryByRole("button", { name: "Trocar e-mail" })).not.toBeInTheDocument();
+    expect(screen.getByText(/contas com Google ou GitHub não têm/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /segurança/i }));
+    expect(screen.queryByRole("button", { name: "Trocar senha" })).not.toBeInTheDocument();
+    expect(screen.getByText(/não tem senha para trocar/i)).toBeInTheDocument();
   });
 
   it("conta não verificada desabilita as duas trocas com o aviso", async () => {

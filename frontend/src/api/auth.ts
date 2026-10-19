@@ -4,7 +4,7 @@
  */
 import { isOfflineResponse, OFFLINE_MESSAGE } from "./offline";
 
-export type User = { id: string; name: string; email: string; emailVerified: boolean };
+export type User = { id: string; name: string; email: string; emailVerified: boolean; hasPassword: boolean };
 
 export class AuthError extends Error {
   status: number;

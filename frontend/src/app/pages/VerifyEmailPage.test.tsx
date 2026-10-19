@@ -15,7 +15,7 @@ vi.mock("../../api/auth", async (importOriginal) => ({
 const currentUser = vi.mocked(auth.currentUser);
 const verifyEmail = vi.mocked(auth.verifyEmail);
 const resendVerification = vi.mocked(auth.resendVerification);
-const ana = { id: "u1", name: "Ana Martins", email: "ana@lumi.dev", emailVerified: true };
+const ana = { id: "u1", name: "Ana Martins", email: "ana@lumi.dev", emailVerified: true, hasPassword: true };
 
 function renderVerify(path = "/verificar-email?token=abc123", strict = false) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });

@@ -30,6 +30,9 @@ public class User {
 	@Column(nullable = false, length = 120)
 	private String name;
 
+	@Column(name = "has_password", nullable = false)
+	private boolean hasPassword = true;
+
 	@Column(name = "email_verified_at")
 	private Instant emailVerifiedAt;
 
@@ -77,6 +80,15 @@ public class User {
 
 	public void setPasswordHash(String passwordHash) {
 		this.passwordHash = passwordHash;
+	}
+
+	public boolean hasPassword() {
+		return this.hasPassword;
+	}
+
+	public void disablePassword(String unusablePasswordHash) {
+		this.passwordHash = unusablePasswordHash;
+		this.hasPassword = false;
 	}
 
 	public String getName() {

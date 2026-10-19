@@ -69,11 +69,15 @@ public record AppProperties(
 
 			@Valid Rule accountCode,
 
-			@Valid Rule accountChange) {
+			@Valid Rule accountChange,
+
+			@Valid Rule oauth) {
 
 		static final Rule DEFAULT_VERIFY_EMAIL = new Rule(20, Duration.ofMinutes(1));
 
 		static final Rule DEFAULT_ACCOUNT = new Rule(10, Duration.ofMinutes(1));
+
+		static final Rule DEFAULT_OAUTH = new Rule(20, Duration.ofMinutes(1));
 
 		public RateLimit {
 			if (verifyEmail == null) {
@@ -85,11 +89,14 @@ public record AppProperties(
 			if (accountChange == null) {
 				accountChange = DEFAULT_ACCOUNT;
 			}
+			if (oauth == null) {
+				oauth = DEFAULT_OAUTH;
+			}
 		}
 
 		public Duration longestWindow() {
 			return Stream.of(this.login, this.register, this.travel, this.verifyEmail, this.accountCode,
-					this.accountChange)
+					this.accountChange, this.oauth)
 					.map(Rule::window)
 					.max(Duration::compareTo)
 					.orElseThrow();

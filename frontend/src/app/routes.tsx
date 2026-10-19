@@ -14,7 +14,8 @@ async function verificationStatus(token: string | null): Promise<VerifyEmailStat
     return "verified";
   } catch (err) {
     if (err instanceof AuthError && err.isTokenExpired) return "expired";
-    if (err instanceof AuthError && err.isTokenInvalid) return "invalid";
+    if (err instanceof AuthError && (err.isTokenInvalid || err.code === "VALIDATION_ERROR")) return "invalid";
+    if (err instanceof AuthError && err.code === "RATE_LIMIT") return "rate_limited";
     throw err;
   }
 }

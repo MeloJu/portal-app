@@ -92,6 +92,27 @@ describe("VerifyEmailPage", () => {
     expect(await screen.findByRole("link", { name: "Ir para minha estação" })).toHaveAttribute("href", "/dashboard");
   });
 
+  it("token longo demais (VALIDATION_ERROR) é tratado como link inválido", async () => {
+    verifyEmail.mockRejectedValue(new auth.AuthError(400, "VALIDATION_ERROR", "token: size"));
+    renderVerify();
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Link inválido ou já usado");
+  });
+
+  it("429 mostra o aviso de tentativas sem repetir o POST", async () => {
+    verifyEmail.mockRejectedValue(new auth.AuthError(429, "RATE_LIMIT", "limite"));
+    renderVerify("/verificar-email?token=abc123", true);
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Muitas tentativas");
+    expect(screen.getByText(/aguarde um instante e abra o link de novo/i)).toBeInTheDocument();
+    expect(screen.queryByText(/link inválido/i)).not.toBeInTheDocument();
+    expect(verifyEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("5xx continua caindo na tela de erro da rota", async () => {
+    verifyEmail.mockRejectedValue(new auth.AuthError(500, "INTERNAL_ERROR", "boom"));
+    renderVerify();
+    expect(await screen.findByRole("heading", { name: /algo deu errado/i })).toBeInTheDocument();
+  });
+
   it("sem token é inválido e não chama a API de verificação", async () => {
     renderVerify("/verificar-email");
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Link inválido ou já usado");

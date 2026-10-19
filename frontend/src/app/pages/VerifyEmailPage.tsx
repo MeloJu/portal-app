@@ -3,7 +3,7 @@ import { Link, useLoaderData } from "react-router";
 import { AuthError, resendVerification } from "../../api/auth";
 import lumiLogo from "../../assets/lumi-logo-v2.png";
 
-export type VerifyEmailStatus = "verified" | "expired" | "invalid";
+export type VerifyEmailStatus = "verified" | "expired" | "invalid" | "rate_limited";
 export type VerifyEmailData = { status: VerifyEmailStatus; loggedIn: boolean };
 
 const copy: Record<VerifyEmailStatus, { eyebrow: string; title: string; text: string }> = {
@@ -21,6 +21,11 @@ const copy: Record<VerifyEmailStatus, { eyebrow: string; title: string; text: st
     eyebrow: "LINK INVÁLIDO",
     title: "Link inválido ou já usado",
     text: "Se você já confirmou, é só entrar.",
+  },
+  rate_limited: {
+    eyebrow: "CALMA AÍ",
+    title: "Muitas tentativas",
+    text: "Muitas tentativas. Aguarde um instante e abra o link de novo.",
   },
 };
 
@@ -102,7 +107,7 @@ export default function VerifyEmailPage() {
                 Entrar para pedir outro link
               </Link>
             )}
-            {status === "invalid" && (
+            {(status === "invalid" || status === "rate_limited") && (
               <Link className="login-submit" to={home}>
                 {loggedIn ? "Ir para minha estação" : "Entrar"}
               </Link>

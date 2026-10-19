@@ -20,6 +20,8 @@ enum RateLimitedRoute {
 
 	ACCOUNT_CHANGE(RateLimit::accountChange),
 
+	ACCOUNT_PROFILE(RateLimit::accountProfile),
+
 	OAUTH(RateLimit::oauth);
 
 	private final Function<RateLimit, Rule> rule;
@@ -50,6 +52,9 @@ enum RateLimitedRoute {
 			if ("/api/account/email".equals(path) || "/api/account/password".equals(path)) {
 				return new Match(ACCOUNT_CHANGE, null);
 			}
+		}
+		if ("PATCH".equals(request.getMethod()) && "/api/account/profile".equals(path)) {
+			return new Match(ACCOUNT_PROFILE, null);
 		}
 		if ("GET".equals(request.getMethod())) {
 			if (path.startsWith("/api/auth/oauth/")) {

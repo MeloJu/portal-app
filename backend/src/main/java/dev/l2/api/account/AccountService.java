@@ -10,6 +10,7 @@ import dev.l2.api.user.UserRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
 import java.util.UUID;
@@ -47,6 +48,13 @@ public class AccountService {
 		requirePasswordSet(user);
 		String code = this.codes.issue(user, purpose, null);
 		this.mail.dispatch(EmailTemplates.passwordChangeCode(user.getEmail(), code, this.codeValidityMinutes));
+	}
+
+	@Transactional
+	public User updateName(UUID userId, String name) {
+		User user = this.users.findById(userId).orElseThrow(InvalidCredentialsException::new);
+		user.setName(name);
+		return this.users.saveAndFlush(user);
 	}
 
 	public User changeEmail(UUID userId, String newEmail, String code, String currentPassword) {

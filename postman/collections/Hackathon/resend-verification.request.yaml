@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:8080/api/auth/resend-verification
+method: POST
+order: 2600

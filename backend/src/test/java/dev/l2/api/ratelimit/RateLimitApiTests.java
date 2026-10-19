@@ -19,6 +19,7 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -40,6 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		"app.rate-limit.account-code.window=1m",
 		"app.rate-limit.account-change.capacity=2",
 		"app.rate-limit.account-change.window=1m",
+		"app.rate-limit.account-profile.capacity=2",
+		"app.rate-limit.account-profile.window=1m",
 		"app.rate-limit.oauth.capacity=2",
 		"app.rate-limit.oauth.window=1m" })
 class RateLimitApiTests {
@@ -95,6 +98,22 @@ class RateLimitApiTests {
 		}
 
 		accountPost("/api/account/codes", session, "10.1.0.22").andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void blocksTheThirdProfileUpdateFromTheSameAddressWithItsOwnBudget() throws Exception {
+		Cookie session = register("10.1.0.50").cookie();
+		String address = "10.1.0.51";
+
+		profilePatch(session, address, "Ana Um").andExpect(status().isOk());
+		profilePatch(session, address, "Ana Dois").andExpect(status().isOk());
+		profilePatch(session, address, "Ana Tres")
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists(HttpHeaders.RETRY_AFTER))
+				.andExpect(jsonPath("$.code").value("RATE_LIMIT"));
+
+		accountPost("/api/account/email", session, address).andExpect(status().isBadRequest());
+		profilePatch(session, "10.1.0.52", "Ana Quatro").andExpect(status().isOk());
 	}
 
 	@Test
@@ -235,6 +254,16 @@ class RateLimitApiTests {
 				.with(from(address))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{}"));
+	}
+
+	private org.springframework.test.web.servlet.ResultActions profilePatch(Cookie session, String address,
+			String name) throws Exception {
+		return this.mvc.perform(patch("/api/account/profile")
+				.cookie(session)
+				.with(from(address))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"name":"%s"}""".formatted(name)));
 	}
 
 	private org.springframework.test.web.servlet.ResultActions verifyEmail(String address) throws Exception {

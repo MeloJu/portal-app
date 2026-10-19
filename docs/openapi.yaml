@@ -168,6 +168,32 @@ paths:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
         '401': { description: Sem cookie de sessão ou sessão inválida }
 
+  /api/account/profile:
+    patch:
+      tags: [account]
+      summary: Altera o nome da conta
+      description: |
+        Funciona também com o e-mail ainda não confirmado. O `name` é aparado (espaços
+        das pontas, inclusive Unicode) ANTES da validação: vazio ou só espaços é
+        `VALIDATION_ERROR`, e o limite de 120 caracteres (não bytes) vale para o nome já
+        aparado. Caracteres de controle são rejeitados; acentos, apóstrofos e demais
+        caracteres são mantidos como enviados. A conta é sempre a da sessão. A resposta traz
+        um `Set-Cookie` novo, porque o JWT carrega o nome. Sessões emitidas antes continuam
+        válidas até expirar (JWT sem estado), mas `/api/me` lê o nome do banco.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProfileRequest' }
+      responses:
+        '200':
+          description: Nome alterado
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+          content: { application/json: { schema: { $ref: '#/components/schemas/User' } } }
+        '400': { description: '`VALIDATION_ERROR`: nome ausente, vazio, só espaços, com mais de 120 caracteres após o aparo ou com caracteres de controle', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Sem cookie de sessão ou sessão inválida }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /api/account/codes:
     post:
       tags: [account]
@@ -460,6 +486,11 @@ components:
       properties:
         purpose: { type: string, enum: [EMAIL_CHANGE, PASSWORD_CHANGE] }
         newEmail: { type: string, format: email, maxLength: 254, description: obrigatório em EMAIL_CHANGE; ignorado em PASSWORD_CHANGE }
+    UpdateProfileRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120, description: Aparado antes de validar; sem caracteres de controle }
     ChangeEmailRequest:
       type: object
       required: [newEmail, code, currentPassword]

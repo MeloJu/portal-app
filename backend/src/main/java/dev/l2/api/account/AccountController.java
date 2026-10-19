@@ -3,6 +3,7 @@ package dev.l2.api.account;
 import dev.l2.api.account.AccountDtos.ChangeEmailRequest;
 import dev.l2.api.account.AccountDtos.ChangePasswordRequest;
 import dev.l2.api.account.AccountDtos.RequestCodeRequest;
+import dev.l2.api.account.AccountDtos.UpdateProfileRequest;
 import dev.l2.api.auth.AuthDtos.UserResponse;
 import dev.l2.api.auth.SessionIssuer;
 import dev.l2.api.user.User;
@@ -11,6 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +29,12 @@ public class AccountController {
 	public AccountController(AccountService account, SessionIssuer sessions) {
 		this.account = account;
 		this.sessions = sessions;
+	}
+
+	@PatchMapping("/api/account/profile")
+	public ResponseEntity<UserResponse> updateProfile(@AuthenticationPrincipal Jwt principal,
+			@Valid @RequestBody UpdateProfileRequest request) {
+		return refreshed(this.account.updateName(userId(principal), request.name()));
 	}
 
 	@PostMapping("/api/account/codes")

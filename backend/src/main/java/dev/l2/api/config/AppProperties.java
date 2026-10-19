@@ -71,11 +71,15 @@ public record AppProperties(
 
 			@Valid Rule accountChange,
 
+			@Valid Rule accountProfile,
+
 			@Valid Rule oauth) {
 
 		static final Rule DEFAULT_VERIFY_EMAIL = new Rule(20, Duration.ofMinutes(1));
 
 		static final Rule DEFAULT_ACCOUNT = new Rule(10, Duration.ofMinutes(1));
+
+		static final Rule DEFAULT_ACCOUNT_PROFILE = new Rule(20, Duration.ofMinutes(1));
 
 		static final Rule DEFAULT_OAUTH = new Rule(20, Duration.ofMinutes(1));
 
@@ -89,6 +93,9 @@ public record AppProperties(
 			if (accountChange == null) {
 				accountChange = DEFAULT_ACCOUNT;
 			}
+			if (accountProfile == null) {
+				accountProfile = DEFAULT_ACCOUNT_PROFILE;
+			}
 			if (oauth == null) {
 				oauth = DEFAULT_OAUTH;
 			}
@@ -96,7 +103,7 @@ public record AppProperties(
 
 		public Duration longestWindow() {
 			return Stream.of(this.login, this.register, this.travel, this.verifyEmail, this.accountCode,
-					this.accountChange, this.oauth)
+					this.accountChange, this.accountProfile, this.oauth)
 					.map(Rule::window)
 					.max(Duration::compareTo)
 					.orElseThrow();

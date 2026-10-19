@@ -1,0 +1,11 @@
+$kind: http-request
+url: http://localhost:8080/api/auth/verify-email
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"token\": \"string\"\r
+
+    }"
+order: 2500

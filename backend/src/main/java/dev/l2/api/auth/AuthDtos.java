@@ -26,6 +26,10 @@ public final class AuthDtos {
 
 	}
 
+	public record VerifyEmailRequest(@NotBlank @Size(max = 100) String token) {
+
+	}
+
 	public record UserResponse(UUID id, String name, String email, boolean emailVerified) {
 
 		public static UserResponse of(User user) {

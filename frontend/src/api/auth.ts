@@ -30,6 +30,14 @@ export class AuthError extends Error {
   get isInvalidCredentials() {
     return this.status === 401;
   }
+
+  get isTokenExpired() {
+    return this.code === "TOKEN_EXPIRED";
+  }
+
+  get isTokenInvalid() {
+    return this.code === "TOKEN_INVALID";
+  }
 }
 
 function parseRetryAfter(header: string | null): number | null {
@@ -78,6 +86,14 @@ export async function resendVerification(): Promise<void> {
 
 export async function logout(): Promise<void> {
   await request("/api/auth/logout", { method: "POST" });
+}
+
+export async function verifyEmail(token: string): Promise<void> {
+  await request("/api/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) });
+}
+
+export async function resendVerification(): Promise<void> {
+  await request("/api/auth/resend-verification", { method: "POST" });
 }
 
 /** Usuário da sessão atual, ou null sem sessão. API fora do ar lança (a rota mostra a tela de estação fora do ar). */

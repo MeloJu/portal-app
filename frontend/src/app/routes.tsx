@@ -1,10 +1,30 @@
 import { createBrowserRouter, redirect, type RouteObject } from "react-router";
-import { currentUser } from "../api/auth";
+import { AuthError, currentUser, verifyEmail } from "../api/auth";
 import { travel } from "../api/travel";
 import Dashboard from "./Dashboard";
 import LoginPage from "./pages/LoginPage";
 import RouteErrorPage from "./pages/RouteErrorPage";
 import TravelPage from "./pages/TravelPage";
+import VerifyEmailPage, { type VerifyEmailData, type VerifyEmailStatus } from "./pages/VerifyEmailPage";
+
+async function verificationStatus(token: string | null): Promise<VerifyEmailStatus> {
+  if (!token) return "invalid";
+  try {
+    await verifyEmail(token);
+    return "verified";
+  } catch (err) {
+    if (err instanceof AuthError && err.isTokenExpired) return "expired";
+    if (err instanceof AuthError && (err.isTokenInvalid || err.code === "VALIDATION_ERROR")) return "invalid";
+    if (err instanceof AuthError && (err.code === "RATE_LIMIT" || err.status === 429)) return "rate_limited";
+    throw err;
+  }
+}
+
+async function verifyEmailLoader({ request }: { request: Request }): Promise<VerifyEmailData> {
+  const loggedIn = (await currentUser()) !== null;
+  const status = await verificationStatus(new URL(request.url).searchParams.get("token"));
+  return { status, loggedIn };
+}
 
 /** A sessão é o cookie da API: quem decide se há usuário logado é o /api/me. */
 export const routes: RouteObject[] = [
@@ -26,6 +46,11 @@ export const routes: RouteObject[] = [
         path: "/dashboard",
         loader: async () => (await currentUser()) ?? redirect("/login"),
         Component: Dashboard,
+      },
+      {
+        path: "/verificar-email",
+        loader: verifyEmailLoader,
+        Component: VerifyEmailPage,
       },
       {
         // Travessia pública. A Viagem conta no loader (uma vez por navegação), nunca num useEffect.

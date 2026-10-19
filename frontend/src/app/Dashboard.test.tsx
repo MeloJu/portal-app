@@ -228,7 +228,7 @@ describe("Dashboard", () => {
         {
           id: "dashboard",
           path: "/dashboard",
-          loader: () => ({ id: "u1", name: "Bruno Costa", email: "b@lumi.dev" }),
+          loader: () => ({ id: "u1", name: "Bruno Costa", email: "b@lumi.dev", emailVerified: true }),
           Component: Dashboard,
         },
       ],
@@ -245,7 +245,7 @@ describe("Dashboard", () => {
         {
           id: "dashboard",
           path: "/dashboard",
-          loader: () => ({ id: "u1", name: "Bruno Costa", email: "b@lumi.dev" }),
+          loader: () => ({ id: "u1", name: "Bruno Costa", email: "b@lumi.dev", emailVerified: true }),
           Component: Dashboard,
         },
       ],
@@ -256,5 +256,71 @@ describe("Dashboard", () => {
     await userEvent.click(within(nav()).getByRole("button", { name: /configurações/i }));
     expect(screen.getByDisplayValue("b@lumi.dev")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Estação de Bruno")).toBeInTheDocument();
+  });
+
+  describe("conta não verificada", () => {
+    const unverified = { id: "u1", name: "Bruno Costa", email: "b@lumi.dev", emailVerified: false };
+
+    function renderWithUser(initial: typeof unverified, afterRevalidate = initial) {
+      let calls = 0;
+      const router = createMemoryRouter(
+        [
+          {
+            id: "dashboard",
+            path: "/dashboard",
+            loader: () => (calls++ === 0 ? initial : afterRevalidate),
+            Component: Dashboard,
+          },
+        ],
+        { initialEntries: ["/dashboard"] },
+      );
+      render(<RouterProvider router={router} />);
+      return router;
+    }
+
+    it("mostra o banner e bloqueia a criação de portais", async () => {
+      renderWithUser(unverified);
+      expect(await screen.findByText(/enviamos um link para b@lumi.dev/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /criar portal/i })).toBeDisabled();
+      expect(screen.getAllByText("Confirme seu e-mail para criar portais").length).toBeGreaterThan(0);
+    });
+
+    it("não mostra banner para conta verificada", async () => {
+      renderWithUser({ ...unverified, emailVerified: true });
+      expect(await screen.findByText("Bruno Costa")).toBeInTheDocument();
+      expect(screen.queryByText(/enviamos um link/i)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /criar portal/i })).toBeEnabled();
+    });
+
+    it("Já verifiquei recarrega o usuário e o banner some quando ele está verificado", async () => {
+      renderWithUser(unverified, { ...unverified, emailVerified: true });
+      await userEvent.click(await screen.findByRole("button", { name: /já verifiquei/i }));
+      await vi.waitFor(() => expect(screen.queryByText(/enviamos um link/i)).not.toBeInTheDocument());
+      expect(screen.getByRole("button", { name: /criar portal/i })).toBeEnabled();
+    });
+
+    it("quando o banner some, o foco vai para o título da página", async () => {
+      renderWithUser(unverified, { ...unverified, emailVerified: true });
+      await userEvent.click(await screen.findByRole("button", { name: /já verifiquei/i }));
+      await vi.waitFor(() => expect(screen.queryByText(/enviamos um link/i)).not.toBeInTheDocument());
+      await vi.waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveFocus());
+    });
+
+    it("403 EMAIL_NOT_VERIFIED na criação revalida o usuário e passa a bloquear", async () => {
+      renderWithUser({ ...unverified, emailVerified: true }, unverified);
+      vi.mocked(links.createLink).mockRejectedValue(new links.LinkError(403, "EMAIL_NOT_VERIFIED", "x"));
+      await screen.findByText("Bruno Costa");
+      await userEvent.type(screen.getByPlaceholderText(/cole seu link longo/i), "exemplo.com");
+      await userEvent.click(screen.getByRole("button", { name: /criar portal/i }));
+      expect(await screen.findByText(/enviamos um link para b@lumi.dev/i, {}, { timeout: 4000 })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /criar portal/i })).toBeDisabled();
+    });
+
+    it("a aba Revelar destino segue disponível", async () => {
+      renderWithUser(unverified);
+      await screen.findByText(/enviamos um link/i);
+      await userEvent.click(within(nav()).getByRole("button", { name: /revelar destino/i }));
+      expect(await screen.findByLabelText(/link para revelar/i)).toBeEnabled();
+    });
   });
 });

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useRouteLoaderData } from "react-router";
+import { useNavigate, useRevalidator, useRouteLoaderData } from "react-router";
 import { logout, type User } from "../api/auth";
 import lumiGuardian from "../assets/lumi-guardian.png";
 import lumiLogo from "../assets/lumi-logo-v2.png";
-import CreatePortalForm from "./components/CreatePortalForm";
+import CreatePortalForm, { EMAIL_NOT_VERIFIED_MESSAGE } from "./components/CreatePortalForm";
+import UnverifiedBanner from "./components/UnverifiedBanner";
 import RecentPortals from "./components/RecentPortals";
 import PortalsSection from "./components/PortalsSection";
 import { OrbitStation, StatsGrid, TravelFlowPanel } from "./components/OverviewPanels";
@@ -49,6 +50,20 @@ export default function Dashboard() {
   const [overviewVersion, setOverviewVersion] = useState(0);
   const overview = useOverview(5000, 12, overviewVersion);
   const user = useRouteLoaderData("dashboard") as User | undefined;
+  const { revalidate } = useRevalidator();
+  const isUnverified = Boolean(user) && !user?.emailVerified;
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const wasUnverifiedRef = useRef(isUnverified);
+
+  useEffect(() => {
+    const bannerJustLeft = wasUnverifiedRef.current && !isUnverified;
+    wasUnverifiedRef.current = isUnverified;
+    const focused = document.activeElement;
+    const focusLost = !focused || focused === document.body || !document.body.contains(focused);
+    if (bannerJustLeft && focusLost) {
+      titleRef.current?.focus();
+    }
+  }, [isUnverified]);
   const userName = user?.name ?? "Exploradora";
   const firstName = userName.split(/\s+/).find(Boolean) ?? userName;
   const initials = userName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]!.toUpperCase()).join("") || "?";
@@ -202,10 +217,11 @@ export default function Dashboard() {
       </aside>
 
       <main className="main">
+        {user && isUnverified && <UnverifiedBanner email={user.email} onRevalidate={revalidate} />}
         <header className="topbar">
           <div>
             <p className="eyebrow">{pageEyebrow}</p>
-            <h1>{pageTitle}</h1>
+            <h1 ref={titleRef} tabIndex={-1}>{pageTitle}</h1>
           </div>
           <div className="top-actions">
             <span className="status"><i /> Todos os sistemas online</span>
@@ -270,7 +286,11 @@ export default function Dashboard() {
         </header>
 
         {active === "Visão geral" && (<>
-        <CreatePortalForm onCreated={() => setOverviewVersion((version) => version + 1)} />
+        <CreatePortalForm
+          disabledReason={isUnverified ? EMAIL_NOT_VERIFIED_MESSAGE : undefined}
+          onCreated={() => setOverviewVersion((version) => version + 1)}
+          onEmailNotVerified={revalidate}
+        />
 
         <StatsGrid overview={overview} />
 

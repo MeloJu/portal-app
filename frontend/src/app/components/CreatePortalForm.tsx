@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { ApiError } from "../../api/client";
 import { createLink, LinkError, type Link } from "../../api/links";
 import lumiLogo from "../../assets/lumi-logo-v2.png";
 import lumiPortalBackground from "../../assets/lumi-portal-bg.png";
@@ -11,7 +12,18 @@ type Props = {
   /** Tempo mínimo da animação de abertura, para o portal não piscar quando a API responde rápido. */
   minOpeningMs?: number;
   onCreated?: (link: Link) => void;
+  disabledReason?: string;
+  onEmailNotVerified?: () => void;
 };
+
+export const EMAIL_NOT_VERIFIED_MESSAGE = "Confirme seu e-mail para criar portais";
+const REJECTED_MESSAGE = `${EMAIL_NOT_VERIFIED_MESSAGE}. Se você já confirmou, edite o link e tente de novo.`;
+
+function isEmailNotVerified(err: unknown) {
+  return (
+    (err instanceof LinkError || err instanceof ApiError) && err.status === 403 && err.code === "EMAIL_NOT_VERIFIED"
+  );
+}
 
 /** "Promoção de Verão" → "promocao-de-verao": tira acentos e junta o resto com um hífen só. */
 function normalizeAlias(typed: string) {
@@ -27,7 +39,12 @@ function displayUrl(shortUrl: string) {
   return shortUrl.replace(/^https?:\/\//, "");
 }
 
-export default function CreatePortalForm({ minOpeningMs = 1400, onCreated }: Props) {
+export default function CreatePortalForm({
+  minOpeningMs = 1400,
+  onCreated,
+  disabledReason,
+  onEmailNotVerified,
+}: Props) {
   const copiedTimerRef = useRef(0);
   const [url, setUrl] = useState("");
   const [slug, setSlug] = useState("");
@@ -38,12 +55,16 @@ export default function CreatePortalForm({ minOpeningMs = 1400, onCreated }: Pro
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
+  const [rejectedAsUnverified, setRejectedAsUnverified] = useState(false);
+  const blockedReason = disabledReason ?? (rejectedAsUnverified ? REJECTED_MESSAGE : undefined);
 
   useEffect(() => () => window.clearTimeout(copiedTimerRef.current), []);
 
+  useEffect(() => setRejectedAsUnverified(false), [disabledReason]);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!url.trim() || isOpening) return;
+    if (!url.trim() || isOpening || blockedReason) return;
     const alias = normalizeAlias(slug) || null;
     if (slug.trim() && !ALIAS_PATTERN.test(alias ?? "")) {
       setError("O nome personalizado precisa ter de 3 a 32 letras, números ou hífens.");
@@ -67,6 +88,11 @@ export default function CreatePortalForm({ minOpeningMs = 1400, onCreated }: Pro
       onCreated?.(link);
     } catch (err) {
       await minimum;
+      if (isEmailNotVerified(err)) {
+        setRejectedAsUnverified(true);
+        onEmailNotVerified?.();
+        return;
+      }
       setError(err instanceof LinkError ? err.message : "Algo deu errado. Tente novamente.");
     } finally {
       setIsOpening(false);
@@ -102,7 +128,10 @@ export default function CreatePortalForm({ minOpeningMs = 1400, onCreated }: Pro
           <span>{icons.link}</span>
           <input
             inputMode="url"
-            onChange={(event) => setUrl(event.target.value)}
+            onChange={(event) => {
+              setUrl(event.target.value);
+              setRejectedAsUnverified(false);
+            }}
             placeholder="Cole seu link longo aqui..."
             type="text"
             value={url}
@@ -118,9 +147,19 @@ export default function CreatePortalForm({ minOpeningMs = 1400, onCreated }: Pro
             value={slug}
           />
         </label>
-        <button className="primary-button" disabled={isOpening} type="submit">
+        <button
+          aria-describedby={blockedReason ? "create-portal-blocked" : undefined}
+          className="primary-button"
+          disabled={isOpening || Boolean(blockedReason)}
+          type="submit"
+        >
           {isOpening ? "Abrindo portal..." : "Criar portal"} {!isOpening && icons.arrow}
         </button>
+        {blockedReason && (
+          <p className="create-portal-blocked" id="create-portal-blocked" role="status">
+            {blockedReason}
+          </p>
+        )}
         <button
           aria-expanded={showExtras}
           className="link-form-toggle"

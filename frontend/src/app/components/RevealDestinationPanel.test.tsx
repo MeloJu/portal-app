@@ -30,6 +30,8 @@ async function reveal(value = "bit.ly/abc") {
   await userEvent.click(screen.getByRole("button", { name: /revelar destino/i }));
 }
 
+afterEach(() => vi.unstubAllGlobals());
+
 beforeEach(() => {
   unshorten.mockReset();
   scan.mockReset();
@@ -576,6 +578,26 @@ describe("RevealDestinationPanel", () => {
       expect(await screen.findByRole("alert")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /resolver aqui na lumi/i })).not.toBeInTheDocument();
     });
+  });
+
+  it("revela e analisa só pelo cliente do tools-api, sem fetch direto", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    unshorten.mockResolvedValue(resolved);
+    scan.mockResolvedValue({
+      url: resolved.finalUrl,
+      verdict: "clean",
+      stats,
+      permalink: "https://www.virustotal.com/gui/url/x",
+    });
+    render(<RevealDestinationPanel />);
+    await reveal();
+    await userEvent.click(await screen.findByRole("button", { name: /analisar com a lumi/i }));
+
+    expect(await screen.findByText("Seguro")).toBeInTheDocument();
+    expect(unshorten).toHaveBeenCalledWith("bit.ly/abc", expect.any(AbortSignal));
+    expect(scan).toHaveBeenCalledWith(resolved.finalUrl, expect.any(AbortSignal));
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("mostra erro quando a análise falha", async () => {

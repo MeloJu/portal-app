@@ -54,6 +54,7 @@ export default function Dashboard() {
   const { revalidate } = useRevalidator();
   const [settingsSection, setSettingsSection] = useState<"profile" | "security">("profile");
   const isUnverified = Boolean(user) && !user?.emailVerified;
+  const hasNoPassword = user?.hasPassword === false;
   const titleRef = useRef<HTMLHeadingElement>(null);
   const wasUnverifiedRef = useRef(isUnverified);
 
@@ -380,7 +381,11 @@ export default function Dashboard() {
               <div className="settings-panels">
                 <article className="settings-panel">
                   <div className="settings-heading"><div><span>SEGURANÇA DA CONTA</span><h2>Senha de acesso</h2></div></div>
-                  <ChangePasswordFlow currentEmail={user.email} disabled={isUnverified} onChanged={revalidate} />
+                  {hasNoPassword ? (
+                    <p className="account-flow-hint">Sua conta entra com Google ou GitHub e não tem senha para trocar.</p>
+                  ) : (
+                    <ChangePasswordFlow currentEmail={user.email} disabled={isUnverified} onChanged={revalidate} />
+                  )}
                 </article>
               </div>
             )}
@@ -393,7 +398,10 @@ export default function Dashboard() {
                   <label><span>Nome da estação</span><input defaultValue={`Estação de ${firstName}`} /></label>
                   <label><span>Idioma</span><select defaultValue="pt-BR"><option value="pt-BR">Português (Brasil)</option><option value="en">English</option></select></label>
                 </div>
-                {user && <ChangeEmailFlow currentEmail={user.email} disabled={isUnverified} onChanged={revalidate} />}
+                {user && hasNoPassword && (
+                  <p className="account-flow-hint">Para trocar o e-mail é preciso ter uma senha; contas com Google ou GitHub não têm.</p>
+                )}
+                {user && !hasNoPassword && <ChangeEmailFlow currentEmail={user.email} disabled={isUnverified} onChanged={revalidate} />}
                 <button className="save-button" type="button">Salvar alterações</button>
               </article>
               <article className="settings-panel preferences-panel">

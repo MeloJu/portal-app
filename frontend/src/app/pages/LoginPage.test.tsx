@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 import * as auth from "../../api/auth";
 import LoginPage from "./LoginPage";
 
@@ -30,13 +30,13 @@ async function fillAndSubmit(email = "ana@lumi.studio", password = "segredo") {
   await userEvent.click(screen.getByRole("button", { name: /entrar na estação/i }));
 }
 
-function renderLogin() {
+function renderLogin(initialEntry = "/login") {
   const router = createMemoryRouter(
     [
       { path: "/login", Component: LoginPage },
       { path: "/dashboard", element: <p>dashboard</p> },
     ],
-    { initialEntries: ["/login"] },
+    { initialEntries: [initialEntry] },
   );
   render(<RouterProvider router={router} />);
   return router;
@@ -64,7 +64,13 @@ describe("LoginPage", () => {
   });
 
   it("faz login na API e navega para o dashboard", async () => {
-    login.mockResolvedValue({ id: "u1", name: "Ana", email: "ana@lumi.studio", emailVerified: true });
+    login.mockResolvedValue({
+      id: "u1",
+      name: "Ana",
+      email: "ana@lumi.studio",
+      emailVerified: true,
+      hasPassword: true,
+    });
     const router = renderLogin();
     await fillAndSubmit();
     await waitFor(() => expect(router.state.location.pathname).toBe("/dashboard"));
@@ -100,7 +106,13 @@ describe("LoginPage", () => {
     });
 
     it("cadastra na API e navega para o dashboard", async () => {
-      register.mockResolvedValue({ id: "u1", name: "Ana", email: "ana@lumi.studio", emailVerified: true });
+      register.mockResolvedValue({
+        id: "u1",
+        name: "Ana",
+        email: "ana@lumi.studio",
+        emailVerified: true,
+        hasPassword: true,
+      });
       const router = renderLogin();
       await openRegister();
       await fillRegister("Ana", "ana@lumi.studio", "segredo-grande");
@@ -154,6 +166,53 @@ describe("LoginPage", () => {
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
       expect(screen.queryByPlaceholderText("Como podemos te chamar?")).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: /entrar na estação/i })).toBeInTheDocument();
+    });
+  });
+
+  describe("login social", () => {
+    const originalLocation = window.location;
+    const assign = vi.fn();
+
+    beforeEach(() => {
+      Object.defineProperty(window, "location", { configurable: true, value: { ...originalLocation, assign } });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(window, "location", { configurable: true, value: originalLocation });
+    });
+
+    it("o botão do Google navega para a rota OAuth do Google", async () => {
+      renderLogin();
+      await userEvent.click(screen.getByRole("button", { name: "Continuar com Google" }));
+      expect(assign).toHaveBeenCalledWith("/api/auth/oauth/google");
+    });
+
+    it("o botão do GitHub navega para a rota OAuth do GitHub", async () => {
+      renderLogin();
+      await userEvent.click(screen.getByRole("button", { name: "Continuar com GitHub" }));
+      expect(assign).toHaveBeenCalledWith("/api/auth/oauth/github");
+    });
+  });
+
+  describe("erro de OAuth na URL", () => {
+    it("mostra a mensagem do e-mail não verificado e limpa o parâmetro", async () => {
+      const router = renderLogin("/login?oauth_error=OAUTH_EMAIL_UNVERIFIED");
+      expect(await screen.findByRole("alert")).toHaveTextContent(/e-mail no provedor ainda não foi verificado/i);
+      await waitFor(() => expect(router.state.location.search).toBe(""));
+      expect(router.state.location.pathname).toBe("/login");
+      expect(screen.getByRole("alert")).toHaveTextContent(/não foi verificado/i);
+    });
+
+    it("usa a mensagem genérica para código desconhecido", async () => {
+      renderLogin("/login?oauth_error=OAUTH_PROVIDER_ERROR");
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Não foi possível entrar com o provedor. Tente novamente.",
+      );
+    });
+
+    it("sem o parâmetro não mostra erro", () => {
+      renderLogin();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
   });
 });

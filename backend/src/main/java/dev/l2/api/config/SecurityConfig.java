@@ -26,7 +26,8 @@ public class SecurityConfig {
 			throws Exception {
 		return http
 				.authorizeHttpRequests(requests -> requests
-						.requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/logout").permitAll()
+						.requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/logout",
+								"/api/auth/verify-email").permitAll()
 						.requestMatchers("/api/travel/**", "/r/**").permitAll()
 						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 						.anyRequest().authenticated())

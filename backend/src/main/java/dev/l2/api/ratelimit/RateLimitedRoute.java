@@ -12,7 +12,9 @@ enum RateLimitedRoute {
 
 	REGISTER(RateLimit::register),
 
-	TRAVEL(RateLimit::travel);
+	TRAVEL(RateLimit::travel),
+
+	VERIFY_EMAIL(RateLimit::verifyEmail);
 
 	private final Function<RateLimit, Rule> rule;
 
@@ -32,6 +34,9 @@ enum RateLimitedRoute {
 			}
 			if ("/api/auth/register".equals(path)) {
 				return new Match(REGISTER, null);
+			}
+			if ("/api/auth/verify-email".equals(path)) {
+				return new Match(VERIFY_EMAIL, null);
 			}
 		}
 		if ("GET".equals(request.getMethod())) {

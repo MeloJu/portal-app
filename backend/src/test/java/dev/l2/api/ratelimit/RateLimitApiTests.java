@@ -31,7 +31,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		"app.rate-limit.register.capacity=2",
 		"app.rate-limit.register.window=1m",
 		"app.rate-limit.travel.capacity=2",
-		"app.rate-limit.travel.window=1m" })
+		"app.rate-limit.travel.window=1m",
+		"app.rate-limit.verify-email.capacity=2",
+		"app.rate-limit.verify-email.window=1m" })
 class RateLimitApiTests {
 
 	private static final String PASSWORD = "senha-bem-grande";
@@ -51,6 +53,20 @@ class RateLimitApiTests {
 				.andExpect(header().exists(HttpHeaders.RETRY_AFTER))
 				.andExpect(jsonPath("$.code").value("RATE_LIMIT"))
 				.andExpect(jsonPath("$.message").isNotEmpty());
+	}
+
+	@Test
+	void blocksTheThirdEmailVerificationFromTheSameAddress() throws Exception {
+		String address = "10.1.0.9";
+
+		verifyEmail(address).andExpect(status().isBadRequest());
+		verifyEmail(address).andExpect(status().isBadRequest());
+		verifyEmail(address)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists(HttpHeaders.RETRY_AFTER))
+				.andExpect(jsonPath("$.code").value("RATE_LIMIT"));
+
+		verifyEmail("10.1.0.10").andExpect(status().isBadRequest());
 	}
 
 	@Test
@@ -152,6 +168,14 @@ class RateLimitApiTests {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"email":"%s","password":"%s"}""".formatted(email, PASSWORD)));
+	}
+
+	private org.springframework.test.web.servlet.ResultActions verifyEmail(String address) throws Exception {
+		return this.mvc.perform(post("/api/auth/verify-email")
+				.with(from(address))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"token":"inexistente"}"""));
 	}
 
 	private org.springframework.test.web.servlet.ResultActions travel(String address, String code) throws Exception {

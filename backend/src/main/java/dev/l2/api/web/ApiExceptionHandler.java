@@ -1,5 +1,9 @@
 package dev.l2.api.web;
 
+import dev.l2.api.account.CodeAttemptsExceededException;
+import dev.l2.api.account.CodeExpiredException;
+import dev.l2.api.account.CodeInvalidException;
+import dev.l2.api.account.CodeRequestTooSoonException;
 import dev.l2.api.auth.EmailAlreadyUsedException;
 import dev.l2.api.auth.EmailNotVerifiedException;
 import dev.l2.api.auth.InvalidCredentialsException;
@@ -10,6 +14,7 @@ import dev.l2.api.auth.verification.VerificationTokenInvalidException;
 import dev.l2.api.link.AliasAlreadyUsedException;
 import dev.l2.api.link.InvalidLinkException;
 import dev.l2.api.link.LinkNotFoundException;
+import java.time.Duration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -89,10 +94,34 @@ public class ApiExceptionHandler {
 
 	@ExceptionHandler(ResendTooSoonException.class)
 	public ResponseEntity<ErrorResponse> onResendTooSoon(ResendTooSoonException exception) {
-		long seconds = Math.max(exception.getRetryAfter().plusMillis(999).toSeconds(), 1);
+		return rateLimited(exception.getRetryAfter(), exception.getMessage());
+	}
+
+	@ExceptionHandler(CodeInvalidException.class)
+	public ResponseEntity<ErrorResponse> onCodeInvalid(CodeInvalidException exception) {
+		return body(HttpStatus.BAD_REQUEST, "CODE_INVALID", exception.getMessage());
+	}
+
+	@ExceptionHandler(CodeExpiredException.class)
+	public ResponseEntity<ErrorResponse> onCodeExpired(CodeExpiredException exception) {
+		return body(HttpStatus.BAD_REQUEST, "CODE_EXPIRED", exception.getMessage());
+	}
+
+	@ExceptionHandler(CodeAttemptsExceededException.class)
+	public ResponseEntity<ErrorResponse> onCodeAttemptsExceeded(CodeAttemptsExceededException exception) {
+		return body(HttpStatus.TOO_MANY_REQUESTS, "CODE_ATTEMPTS_EXCEEDED", exception.getMessage());
+	}
+
+	@ExceptionHandler(CodeRequestTooSoonException.class)
+	public ResponseEntity<ErrorResponse> onCodeRequestTooSoon(CodeRequestTooSoonException exception) {
+		return rateLimited(exception.retryAfter(), exception.getMessage());
+	}
+
+	private static ResponseEntity<ErrorResponse> rateLimited(Duration retryAfter, String message) {
+		long seconds = Math.max(retryAfter.plusMillis(999).toSeconds(), 1);
 		return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
 				.header(HttpHeaders.RETRY_AFTER, Long.toString(seconds))
-				.body(new ErrorResponse("RATE_LIMIT", exception.getMessage()));
+				.body(new ErrorResponse("RATE_LIMIT", message));
 	}
 
 	private static String describe(FieldError error) {

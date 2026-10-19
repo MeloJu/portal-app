@@ -24,8 +24,8 @@ const copy: Record<VerifyEmailStatus, { eyebrow: string; title: string; text: st
   },
   rate_limited: {
     eyebrow: "CALMA AÍ",
-    title: "Muitas tentativas",
-    text: "Muitas tentativas. Aguarde um instante e abra o link de novo.",
+    title: "Vamos com calma",
+    text: "Muitas tentativas. Aguarde um instante e abra de novo o link que enviamos por e-mail. Recarregar esta página não funciona.",
   },
 };
 

@@ -98,11 +98,16 @@ describe("VerifyEmailPage", () => {
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Link inválido ou já usado");
   });
 
-  it("429 mostra o aviso de tentativas sem repetir o POST", async () => {
-    verifyEmail.mockRejectedValue(new auth.AuthError(429, "RATE_LIMIT", "limite"));
+  it.each([
+    ["RATE_LIMIT", "RATE_LIMIT"],
+    ["429 sem corpo JSON", "UNKNOWN"],
+  ])("429 (%s) mostra o aviso de tentativas sem repetir o POST", async (_caso, code) => {
+    verifyEmail.mockRejectedValue(new auth.AuthError(429, code, "limite"));
     renderVerify("/verificar-email?token=abc123", true);
-    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Muitas tentativas");
-    expect(screen.getByText(/aguarde um instante e abra o link de novo/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Vamos com calma");
+    expect(screen.getByText(/muitas tentativas/i)).toBeInTheDocument();
+    expect(screen.getByText(/link que enviamos por e-mail/i)).toBeInTheDocument();
+    expect(screen.getByText(/recarregar esta página não funciona/i)).toBeInTheDocument();
     expect(screen.queryByText(/link inválido/i)).not.toBeInTheDocument();
     expect(verifyEmail).toHaveBeenCalledTimes(1);
   });

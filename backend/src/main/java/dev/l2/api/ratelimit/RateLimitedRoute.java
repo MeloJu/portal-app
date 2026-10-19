@@ -14,7 +14,11 @@ enum RateLimitedRoute {
 
 	TRAVEL(RateLimit::travel),
 
-	VERIFY_EMAIL(RateLimit::verifyEmail);
+	VERIFY_EMAIL(RateLimit::verifyEmail),
+
+	ACCOUNT_CODE(RateLimit::accountCode),
+
+	ACCOUNT_CHANGE(RateLimit::accountChange);
 
 	private final Function<RateLimit, Rule> rule;
 
@@ -37,6 +41,12 @@ enum RateLimitedRoute {
 			}
 			if ("/api/auth/verify-email".equals(path)) {
 				return new Match(VERIFY_EMAIL, null);
+			}
+			if ("/api/account/codes".equals(path)) {
+				return new Match(ACCOUNT_CODE, null);
+			}
+			if ("/api/account/email".equals(path) || "/api/account/password".equals(path)) {
+				return new Match(ACCOUNT_CHANGE, null);
 			}
 		}
 		if ("GET".equals(request.getMethod())) {

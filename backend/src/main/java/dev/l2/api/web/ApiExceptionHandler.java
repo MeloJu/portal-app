@@ -4,6 +4,8 @@ import dev.l2.api.account.CodeAttemptsExceededException;
 import dev.l2.api.account.CodeExpiredException;
 import dev.l2.api.account.CodeInvalidException;
 import dev.l2.api.account.CodeRequestTooSoonException;
+import dev.l2.api.account.InvalidAccountChangeException;
+import dev.l2.api.account.WrongPasswordException;
 import dev.l2.api.auth.EmailAlreadyUsedException;
 import dev.l2.api.auth.EmailNotVerifiedException;
 import dev.l2.api.auth.InvalidCredentialsException;
@@ -115,6 +117,16 @@ public class ApiExceptionHandler {
 	@ExceptionHandler(CodeRequestTooSoonException.class)
 	public ResponseEntity<ErrorResponse> onCodeRequestTooSoon(CodeRequestTooSoonException exception) {
 		return rateLimited(exception.retryAfter(), exception.getMessage());
+	}
+
+	@ExceptionHandler(WrongPasswordException.class)
+	public ResponseEntity<ErrorResponse> onWrongPassword(WrongPasswordException exception) {
+		return body(HttpStatus.FORBIDDEN, "WRONG_PASSWORD", exception.getMessage());
+	}
+
+	@ExceptionHandler(InvalidAccountChangeException.class)
+	public ResponseEntity<ErrorResponse> onInvalidAccountChange(InvalidAccountChangeException exception) {
+		return body(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", exception.getMessage());
 	}
 
 	private static ResponseEntity<ErrorResponse> rateLimited(Duration retryAfter, String message) {

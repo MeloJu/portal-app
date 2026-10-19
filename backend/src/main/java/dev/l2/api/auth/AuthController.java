@@ -25,16 +25,16 @@ public class AuthController {
 
 	private final AuthService auth;
 
-	private final JwtService jwt;
+	private final SessionIssuer sessions;
 
 	private final SessionCookie cookie;
 
 	private final VerificationTokenService verification;
 
-	public AuthController(AuthService auth, JwtService jwt, SessionCookie cookie,
+	public AuthController(AuthService auth, SessionIssuer sessions, SessionCookie cookie,
 			VerificationTokenService verification) {
 		this.auth = auth;
-		this.jwt = jwt;
+		this.sessions = sessions;
 		this.cookie = cookie;
 		this.verification = verification;
 	}
@@ -76,10 +76,9 @@ public class AuthController {
 	}
 
 	private ResponseEntity<AuthResponse> session(User user, HttpStatus status) {
-		String token = this.jwt.issue(user.getId(), user.getEmail(), user.getName());
 		return ResponseEntity.status(status)
-				.header(HttpHeaders.SET_COOKIE, this.cookie.issue(token).toString())
-				.body(new AuthResponse(this.jwt.expiresInSeconds(), UserResponse.of(user)));
+				.header(HttpHeaders.SET_COOKIE, this.sessions.setCookieHeader(user))
+				.body(new AuthResponse(this.sessions.expiresInSeconds(), UserResponse.of(user)));
 	}
 
 }

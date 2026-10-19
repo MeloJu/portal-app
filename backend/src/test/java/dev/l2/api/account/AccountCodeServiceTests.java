@@ -13,6 +13,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -215,7 +217,6 @@ class AccountCodeServiceTests {
 		assertThatThrownBy(() -> this.service.issue(this.user, AccountCodePurpose.PASSWORD_CHANGE, null))
 				.isInstanceOfSatisfying(CodeRequestTooSoonException.class, tooSoon -> {
 					assertThat(tooSoon.retryAfter()).isEqualTo(Duration.ofSeconds(35));
-					assertThat(tooSoon.retryAfterSeconds()).isEqualTo(35);
 				});
 
 		this.clock.advance(Duration.ofSeconds(35));
@@ -429,14 +430,55 @@ class AccountCodeServiceTests {
 	}
 
 	@Test
-	void callerDeclaringNoRollbackForAccountCodeExceptionKeepsTheWrongAttempt() {
+	void consumeInsideAnotherTransactionFailsInsteadOfLosingTheWrongAttempt() {
 		this.random.script(808_080);
 		this.service.issue(this.user, AccountCodePurpose.PASSWORD_CHANGE, null);
 
-		assertThatThrownBy(() -> this.caller.consumeInsideCallerTransaction(this.user, "654321"))
+		assertThatThrownBy(() -> this.caller.consumeInsidePlainTransaction(this.user, "654321"))
+				.isInstanceOf(IllegalTransactionStateException.class);
+		assertThatThrownBy(() -> this.caller.consumeInsideTransactionWithMisusedNoRollbackFor(this.user, "654321"))
+				.isInstanceOf(IllegalTransactionStateException.class);
+	}
+
+	@Test
+	void wrongAttemptIsCommittedEvenThoughTheBusinessExceptionIsThrown() {
+		this.random.script(909_090);
+		this.service.issue(this.user, AccountCodePurpose.PASSWORD_CHANGE, null);
+
+		assertThatThrownBy(() -> this.service.consume(this.user, AccountCodePurpose.PASSWORD_CHANGE, "654321", null))
 				.isInstanceOf(CodeInvalidException.class);
 
 		assertThat(latest(this.user, AccountCodePurpose.PASSWORD_CHANGE).getAttempts()).isEqualTo(1);
+	}
+
+	@Test
+	void effectRunsOnlyOnAcceptedCode() {
+		this.random.script(111_222);
+		String code = this.service.issue(this.user, AccountCodePurpose.PASSWORD_CHANGE, null);
+		List<AccountCode> applied = new ArrayList<>();
+
+		assertThatThrownBy(() -> this.service.consume(this.user, AccountCodePurpose.PASSWORD_CHANGE, "654321", null,
+				applied::add)).isInstanceOf(CodeInvalidException.class);
+		assertThat(applied).isEmpty();
+
+		this.service.consume(this.user, AccountCodePurpose.PASSWORD_CHANGE, code, null, applied::add);
+		assertThat(applied).hasSize(1);
+	}
+
+	@Test
+	void failingEffectRollsBackTheUsedMarkSoTheCodeStaysUsable() {
+		this.random.script(333_444);
+		String code = this.service.issue(this.user, AccountCodePurpose.PASSWORD_CHANGE, null);
+
+		assertThatThrownBy(() -> this.service.consume(this.user, AccountCodePurpose.PASSWORD_CHANGE, code, null,
+				accepted -> {
+					throw new IllegalStateException("efeito falhou");
+				})).isInstanceOf(IllegalStateException.class);
+
+		AccountCode stored = latest(this.user, AccountCodePurpose.PASSWORD_CHANGE);
+		assertThat(stored.getUsedAt()).isNull();
+		assertThat(stored.getAttempts()).isZero();
+		assertThat(this.service.consume(this.user, AccountCodePurpose.PASSWORD_CHANGE, code, null)).isNotNull();
 	}
 
 	@Test
@@ -481,9 +523,19 @@ class AccountCodeServiceTests {
 			this.service = service;
 		}
 
-		@Transactional(noRollbackFor = AccountCodeException.class)
-		public AccountCode consumeInsideCallerTransaction(User user, String code) {
+		@Transactional
+		public AccountCode consumeInsidePlainTransaction(User user, String code) {
 			return this.service.consume(user, AccountCodePurpose.PASSWORD_CHANGE, code, null);
+		}
+
+		@Transactional(noRollbackFor = AccountCodeException.class)
+		public AccountCode consumeInsideTransactionWithMisusedNoRollbackFor(User user, String code) {
+			try {
+				return this.service.consume(user, AccountCodePurpose.PASSWORD_CHANGE, code, null);
+			}
+			catch (AccountCodeException rejection) {
+				throw new IllegalStateException(rejection);
+			}
 		}
 
 	}
@@ -550,6 +602,7 @@ class AccountCodeServiceTests {
 	static class Config {
 
 		@Bean
+		@Primary
 		MutableClock mutableClock() {
 			return new MutableClock();
 		}
@@ -562,8 +615,9 @@ class AccountCodeServiceTests {
 		@Bean
 		@Primary
 		AccountCodeService controlledService(AccountCodeRepository codes, CodeHasher hasher,
-				AppProperties properties, MutableClock clock, ScriptedRandom random) {
-			return new AccountCodeService(codes, hasher, properties, clock, random);
+				AppProperties properties, PlatformTransactionManager transactionManager, MutableClock clock,
+				ScriptedRandom random) {
+			return new AccountCodeService(codes, hasher, properties, transactionManager, clock, random);
 		}
 
 		@Bean

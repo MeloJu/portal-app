@@ -4,7 +4,10 @@ import dev.l2.api.config.AppProperties;
 import dev.l2.api.user.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.security.SecureRandom;
 import java.time.Clock;
@@ -13,6 +16,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.random.RandomGenerator;
 import java.util.regex.Pattern;
 
@@ -33,14 +37,17 @@ public class AccountCodeService {
 
 	private final RandomGenerator random;
 
+	private final TransactionTemplate transactions;
+
 	@Autowired
-	public AccountCodeService(AccountCodeRepository codes, CodeHasher hasher,
-			AppProperties properties) {
-		this(codes, hasher, properties, Clock.systemUTC(), new SecureRandom());
+	public AccountCodeService(AccountCodeRepository codes, CodeHasher hasher, AppProperties properties,
+			PlatformTransactionManager transactionManager) {
+		this(codes, hasher, properties, transactionManager, Clock.systemUTC(), new SecureRandom());
 	}
 
-	AccountCodeService(AccountCodeRepository codes, CodeHasher hasher,
-			AppProperties properties, Clock clock, RandomGenerator random) {
+	AccountCodeService(AccountCodeRepository codes, CodeHasher hasher, AppProperties properties,
+			PlatformTransactionManager transactionManager, Clock clock, RandomGenerator random) {
+		this.transactions = new TransactionTemplate(transactionManager);
 		this.codes = codes;
 		this.hasher = hasher;
 		this.settings = properties.codes();
@@ -61,8 +68,44 @@ public class AccountCodeService {
 		return code;
 	}
 
-	@Transactional(noRollbackFor = AccountCodeException.class)
+	@Transactional(propagation = Propagation.NEVER)
 	public AccountCode consume(User user, AccountCodePurpose purpose, String submittedCode,
+			String expectedNewEmailOrNull) {
+		return consume(user, purpose, submittedCode, expectedNewEmailOrNull, accepted -> {
+		});
+	}
+
+	@Transactional(propagation = Propagation.NEVER)
+	public AccountCode consume(User user, AccountCodePurpose purpose, String submittedCode,
+			String expectedNewEmailOrNull, Consumer<AccountCode> effectOnAcceptedCode) {
+		Verdict verdict = this.transactions.execute(status -> {
+			Verdict checked = check(user, purpose, submittedCode, expectedNewEmailOrNull);
+			if (checked.rejection() == null) {
+				effectOnAcceptedCode.accept(checked.accepted());
+			}
+			return checked;
+		});
+		if (verdict.rejection() != null) {
+			throw verdict.rejection();
+		}
+		return verdict.accepted();
+	}
+
+	private Verdict check(User user, AccountCodePurpose purpose, String submittedCode,
+			String expectedNewEmailOrNull) {
+		try {
+			return new Verdict(accept(user, purpose, submittedCode, expectedNewEmailOrNull), null);
+		}
+		catch (AccountCodeException rejection) {
+			return new Verdict(null, rejection);
+		}
+	}
+
+	private record Verdict(AccountCode accepted, AccountCodeException rejection) {
+
+	}
+
+	private AccountCode accept(User user, AccountCodePurpose purpose, String submittedCode,
 			String expectedNewEmailOrNull) {
 		if (submittedCode == null || !SIX_DIGITS.matcher(submittedCode).matches()) {
 			throw new CodeInvalidException();

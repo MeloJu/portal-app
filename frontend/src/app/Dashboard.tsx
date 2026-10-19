@@ -22,7 +22,6 @@ const navItems = [
   ["Revelar destino", icons.unlink],
   ["Viagens", icons.chart],
   ["Proteção", icons.shield],
-  ["Conquistas", icons.trophy],
   ["Configurações", icons.settings],
 ] as const;
 

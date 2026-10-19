@@ -216,6 +216,20 @@ No cluster, `APP_CODE_PEPPER`, `SMTP_USER` e `SMTP_PASSWORD` entram no Secret `l
 `MAIL_ENABLED`, `MAIL_FROM`, `SMTP_HOST` e `SMTP_PORT` não são secretos e vão no ConfigMap `l2-config`.
 Esses valores **não vão ao Git** deste repositório: aqui só existe o `.env.example`, com valores vazios.
 
+### Login com Google e GitHub
+
+| Variável | Para quê | Obrigatória |
+|---|---|---|
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | credenciais do app OAuth do Google | não; vazias desligam o Google |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | credenciais do OAuth App do GitHub | não; vazias desligam o GitHub |
+
+Cada provedor liga sozinho quando **id e secret** estão preenchidos; com qualquer um vazio ele fica desligado e
+`GET /api/auth/oauth/{google|github}` responde `302` para `{PUBLIC_BASE_URL}/login?oauth_error=OAUTH_DISABLED`.
+Cadastre no provedor a URL de retorno `{PUBLIC_BASE_URL}/api/auth/oauth/callback/google` (ou `/github`);
+em dev, `PUBLIC_BASE_URL` é `http://localhost:5173`. Só são pedidos nome e e-mail (Google `openid email profile`,
+GitHub `read:user user:email`). No cluster, os secrets entram no Secret `l2-secrets` do `portal-gitops`, selados; os ids
+podem ir no ConfigMap `l2-config`. Os testes mockam os provedores e não usam rede nem credenciais.
+
 ### Do commit ao cluster
 
 1. **Actions → CI**: os testes rodam; o job `images` só começa se **todos** passarem.

@@ -106,6 +106,60 @@ paths:
         '401': { description: Sem cookie de sessão ou sessão inválida }
         '409': { description: E-mail já confirmado (`ALREADY_VERIFIED`), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '429': { $ref: '#/components/responses/TooManyRequests' }
+  /api/auth/oauth/{provider}:
+    get:
+      tags: [auth]
+      security: []
+      summary: Começa o login com Google ou GitHub
+      description: |
+        Navegação do browser (não é chamada `fetch`): redireciona com `302` ao provedor, pedindo
+        apenas nome e e-mail (Google `openid email profile`; GitHub `read:user user:email`), com
+        `state` e PKCE (`S256`). Define o cookie `lumi_oauth_state` (`HttpOnly`, `SameSite=Lax`,
+        `Path=/api/auth/oauth`, 10 minutos), que guarda só o `state` assinado; o `code_verifier`
+        nunca sai do servidor. O `redirect_uri` é `{PUBLIC_BASE_URL}/api/auth/oauth/callback/{provider}`
+        e precisa estar cadastrado no app do provedor. Provedor sem credenciais configuradas:
+        `302` para `{PUBLIC_BASE_URL}/login?oauth_error=OAUTH_DISABLED`. Limitada por IP,
+        no mesmo balde do callback.
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema: { type: string, enum: [google, github] }
+      responses:
+        '302': { description: 'Redirect ao provedor, ou a `/login?oauth_error=OAUTH_DISABLED` se desligado' }
+        '404': { description: Provedor desconhecido }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /api/auth/oauth/callback/{provider}:
+    get:
+      tags: [auth]
+      security: []
+      summary: Retorno do provedor; abre a sessão e volta ao front
+      description: |
+        Chamado pelo provedor via redirect do browser. Valida o `state` contra o cookie
+        `lumi_oauth_state` (obrigatório), troca o `code` com PKCE e aplica as regras de vinculação:
+        identidade já conhecida entra na conta dona; e-mail NÃO verificado pelo provedor é recusado
+        (`OAUTH_EMAIL_UNVERIFIED`); e-mail verificado igual ao de uma conta existente vincula (se a
+        conta não estava verificada, ela passa a verificada e a senha anterior é invalidada,
+        `hasPassword=false`); sem conta, cria uma (verificada, `hasPassword=false`).
+        O destino do redirect é sempre `{PUBLIC_BASE_URL}/dashboard` ou
+        `{PUBLIC_BASE_URL}/login?oauth_error=<código>`; nunca vem do request. Códigos:
+        `OAUTH_DISABLED`, `OAUTH_STATE_INVALID`, `OAUTH_DENIED`, `OAUTH_EMAIL_UNVERIFIED`,
+        `OAUTH_PROVIDER_ERROR`. Erros de negócio nunca viram `401`.
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema: { type: string, enum: [google, github] }
+        - { name: code, in: query, required: false, schema: { type: string } }
+        - { name: state, in: query, required: false, schema: { type: string } }
+        - { name: error, in: query, required: false, schema: { type: string } }
+      responses:
+        '302':
+          description: 'Sucesso: `Set-Cookie: lumi_session` e redirect a `/dashboard`. Falha: redirect a `/login?oauth_error=<código>`, sem sessão'
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+        '404': { description: Provedor desconhecido }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /api/me:
     get:
       tags: [auth]
@@ -134,7 +188,7 @@ paths:
         '400': { description: '`VALIDATION_ERROR`: finalidade desconhecida, `newEmail` ausente, inválido ou igual ao atual', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '401': { description: Sem cookie de sessão ou sessão inválida }
         '403': { description: E-mail da conta ainda não confirmado (`EMAIL_NOT_VERIFIED`), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
-        '409': { description: Novo e-mail já cadastrado (`EMAIL_TAKEN`), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: 'Novo e-mail já cadastrado (`EMAIL_TAKEN`) ou, em `PASSWORD_CHANGE`, conta sem senha (`PASSWORD_NOT_SET`)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '429': { $ref: '#/components/responses/TooManyRequests' }
   /api/account/email:
     post:
@@ -185,6 +239,7 @@ paths:
         '400': { description: '`VALIDATION_ERROR` (inclui nova senha igual à atual), `CODE_INVALID` ou `CODE_EXPIRED`', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '401': { description: Sem cookie de sessão ou sessão inválida }
         '403': { description: '`EMAIL_NOT_VERIFIED` ou `WRONG_PASSWORD` (senha atual incorreta; não é 401 para não derrubar a sessão)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: 'Conta sem senha (`PASSWORD_NOT_SET`): entra só por Google/GitHub', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '429': { description: '`CODE_ATTEMPTS_EXCEEDED` (5 palpites errados) ou `RATE_LIMIT` por IP', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
 
   # ---------- LINKS (do Usuário logado) ----------
@@ -432,6 +487,7 @@ components:
         name: { type: string }
         email: { type: string }
         emailVerified: { type: boolean }
+        hasPassword: { type: boolean, description: '`false` para conta criada ou assumida pelo login com Google/GitHub; não tem senha para trocar' }
     LinkState:
       type: string
       description: |

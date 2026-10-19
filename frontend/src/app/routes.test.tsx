@@ -47,6 +47,14 @@ describe("rotas", () => {
     expect(currentUser).not.toHaveBeenCalled();
   });
 
+  it("/verificar-email não é capturada pela Travessia /:code", async () => {
+    currentUser.mockResolvedValue(null);
+    const router = go("/verificar-email");
+    expect(await screen.findByRole("heading", { name: /link inválido/i })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/verificar-email");
+    expect(travel).not.toHaveBeenCalled();
+  });
+
   it("com a API fora do ar mostra a estação desligada e tenta de novo", async () => {
     currentUser.mockRejectedValueOnce(new auth.AuthError(500, "OFFLINE", "fora do ar"));
     const router = go("/");

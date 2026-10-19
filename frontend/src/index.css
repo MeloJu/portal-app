@@ -4811,6 +4811,36 @@ html[data-theme="dark"] footer {
   opacity: 0.7;
 }
 
+.verify-email-page {
+  grid-template-columns: 1fr;
+}
+
+.verify-email-page .login-heading h1 {
+  margin: 5px 0;
+  color: #29263f;
+  font: 600 28px "Space Grotesk", sans-serif;
+}
+
+.verify-email-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.verify-email-actions .login-submit {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.verify-email-notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #3f6b4f;
+  background: #e8f5ec;
+  font-size: 11px;
+}
+
 .login-demo {
   margin: 11px 0 0;
   color: #aaa6b5;

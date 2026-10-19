@@ -30,6 +30,9 @@ public class User {
 	@Column(nullable = false, length = 120)
 	private String name;
 
+	@Column(name = "email_verified_at")
+	private Instant emailVerifiedAt;
+
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
@@ -54,6 +57,18 @@ public class User {
 
 	public String getEmail() {
 		return this.email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
+	public boolean isEmailVerified() {
+		return this.emailVerifiedAt != null;
+	}
+
+	public void markEmailVerified(Instant now) {
+		this.emailVerifiedAt = now;
 	}
 
 	public String getPasswordHash() {

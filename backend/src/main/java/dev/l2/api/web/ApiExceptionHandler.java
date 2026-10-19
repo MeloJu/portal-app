@@ -5,10 +5,12 @@ import dev.l2.api.account.CodeExpiredException;
 import dev.l2.api.account.CodeInvalidException;
 import dev.l2.api.account.CodeRequestTooSoonException;
 import dev.l2.api.account.InvalidAccountChangeException;
+import dev.l2.api.account.PasswordNotSetException;
 import dev.l2.api.account.WrongPasswordException;
 import dev.l2.api.auth.EmailAlreadyUsedException;
 import dev.l2.api.auth.EmailNotVerifiedException;
 import dev.l2.api.auth.InvalidCredentialsException;
+import dev.l2.api.auth.oauth.OAuthEmailUnverifiedException;
 import dev.l2.api.auth.verification.AlreadyVerifiedException;
 import dev.l2.api.auth.verification.ResendTooSoonException;
 import dev.l2.api.auth.verification.VerificationTokenExpiredException;
@@ -122,6 +124,16 @@ public class ApiExceptionHandler {
 	@ExceptionHandler(WrongPasswordException.class)
 	public ResponseEntity<ErrorResponse> onWrongPassword(WrongPasswordException exception) {
 		return body(HttpStatus.FORBIDDEN, "WRONG_PASSWORD", exception.getMessage());
+	}
+
+	@ExceptionHandler(PasswordNotSetException.class)
+	public ResponseEntity<ErrorResponse> onPasswordNotSet(PasswordNotSetException exception) {
+		return body(HttpStatus.CONFLICT, "PASSWORD_NOT_SET", exception.getMessage());
+	}
+
+	@ExceptionHandler(OAuthEmailUnverifiedException.class)
+	public ResponseEntity<ErrorResponse> onOAuthEmailUnverified(OAuthEmailUnverifiedException exception) {
+		return body(HttpStatus.BAD_REQUEST, "OAUTH_EMAIL_UNVERIFIED", exception.getMessage());
 	}
 
 	@ExceptionHandler(InvalidAccountChangeException.class)

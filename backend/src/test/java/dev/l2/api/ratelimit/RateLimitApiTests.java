@@ -39,7 +39,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		"app.rate-limit.account-code.capacity=2",
 		"app.rate-limit.account-code.window=1m",
 		"app.rate-limit.account-change.capacity=2",
-		"app.rate-limit.account-change.window=1m" })
+		"app.rate-limit.account-change.window=1m",
+		"app.rate-limit.oauth.capacity=2",
+		"app.rate-limit.oauth.window=1m" })
 class RateLimitApiTests {
 
 	private static final String PASSWORD = "senha-bem-grande";
@@ -108,6 +110,20 @@ class RateLimitApiTests {
 				.andExpect(jsonPath("$.code").value("RATE_LIMIT"));
 		accountPost("/api/account/email", session, address).andExpect(status().isTooManyRequests());
 		accountPost("/api/account/password", session, "10.1.0.32").andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void blocksTheThirdOAuthRequestFromTheSameAddressAcrossStartAndCallback() throws Exception {
+		String address = "10.1.0.40";
+
+		this.mvc.perform(get("/api/auth/oauth/google").with(from(address))).andExpect(status().isFound());
+		this.mvc.perform(get("/api/auth/oauth/callback/google").with(from(address))).andExpect(status().isFound());
+		this.mvc.perform(get("/api/auth/oauth/github").with(from(address)))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists(HttpHeaders.RETRY_AFTER))
+				.andExpect(jsonPath("$.code").value("RATE_LIMIT"));
+
+		this.mvc.perform(get("/api/auth/oauth/google").with(from("10.1.0.41"))).andExpect(status().isFound());
 	}
 
 	@Test

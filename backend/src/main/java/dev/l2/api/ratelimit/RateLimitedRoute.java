@@ -18,7 +18,9 @@ enum RateLimitedRoute {
 
 	ACCOUNT_CODE(RateLimit::accountCode),
 
-	ACCOUNT_CHANGE(RateLimit::accountChange);
+	ACCOUNT_CHANGE(RateLimit::accountChange),
+
+	OAUTH(RateLimit::oauth);
 
 	private final Function<RateLimit, Rule> rule;
 
@@ -50,6 +52,9 @@ enum RateLimitedRoute {
 			}
 		}
 		if ("GET".equals(request.getMethod())) {
+			if (path.startsWith("/api/auth/oauth/")) {
+				return new Match(OAUTH, null);
+			}
 			String code = travelCode(path);
 			if (code != null) {
 				return new Match(TRAVEL, code);

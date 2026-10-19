@@ -44,6 +44,7 @@ public class AccountService {
 			this.mail.dispatch(EmailTemplates.emailChangeCode(target, code, this.codeValidityMinutes));
 			return;
 		}
+		requirePasswordSet(user);
 		String code = this.codes.issue(user, purpose, null);
 		this.mail.dispatch(EmailTemplates.passwordChangeCode(user.getEmail(), code, this.codeValidityMinutes));
 	}
@@ -66,6 +67,7 @@ public class AccountService {
 
 	public User changePassword(UUID userId, String code, String currentPassword, String newPassword) {
 		User user = this.users.requireVerified(userId);
+		requirePasswordSet(user);
 		requireCurrentPassword(user, currentPassword);
 		if (this.passwordEncoder.matches(newPassword, user.getPasswordHash())) {
 			throw new InvalidAccountChangeException("A nova senha deve ser diferente da atual");
@@ -89,6 +91,12 @@ public class AccountService {
 		User fresh = this.users.findById(userId).orElseThrow(InvalidCredentialsException::new);
 		fresh.setPasswordHash(newHash);
 		this.users.saveAndFlush(fresh);
+	}
+
+	private static void requirePasswordSet(User user) {
+		if (!user.hasPassword()) {
+			throw new PasswordNotSetException();
+		}
 	}
 
 	private void requireCurrentPassword(User user, String currentPassword) {

@@ -12,6 +12,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -20,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -51,7 +53,7 @@ class AccountServiceTests {
 				Duration.ofSeconds(60), 5);
 		when(this.properties.codes()).thenReturn(settings);
 		this.stored = new User("ana@example.com", "hash-atual", "Ana");
-		this.stored.markEmailVerified(java.time.Instant.now());
+		this.stored.markEmailVerified(Instant.now());
 		when(this.users.requireVerified(this.id)).thenReturn(this.stored);
 		when(this.users.findById(this.id)).thenReturn(Optional.of(this.stored));
 		when(this.encoder.matches("senha-atual", "hash-atual")).thenReturn(true);
@@ -91,7 +93,7 @@ class AccountServiceTests {
 
 		assertThat(result.getEmail()).isEqualTo("novo@example.com");
 		verify(this.users).saveAndFlush(this.stored);
-		verify(this.mail).dispatch(org.mockito.ArgumentMatchers.argThat(
+		verify(this.mail).dispatch(argThat(
 				message -> message != null && message.to().equals("ana@example.com")));
 	}
 

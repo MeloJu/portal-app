@@ -29,12 +29,20 @@ import org.springframework.transaction.PlatformTransactionManager;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -325,6 +333,62 @@ class AccountFlowTests {
 	}
 
 	@Test
+	void multibytePasswordAboveSeventyTwoBytesIsRejectedAndKeepsTheCode() throws Exception {
+		Account account = verifiedAccount();
+		this.mailbox.clear();
+		requestPasswordCode(account.cookie()).andExpect(status().isNoContent());
+		String code = awaitCodeSentTo(account.email());
+		String tooLong = "é".repeat(40);
+
+		changePassword(account.cookie(), code, PASSWORD, tooLong)
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+				.andExpect(jsonPath("$.message").value(containsString("72 bytes")));
+
+		String atTheLimit = "é".repeat(36);
+		changePassword(account.cookie(), code, PASSWORD, atTheLimit).andExpect(status().isOk());
+		login(account.email(), atTheLimit).andExpect(status().isOk());
+		login(account.email(), PASSWORD).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void twoUsersConfirmingTheSameNewEmailAtOnceYieldOneSuccessAndOneConflict() throws Exception {
+		Account first = verifiedAccount();
+		Account second = verifiedAccount();
+		String contested = unique() + "@example.com";
+		this.mailbox.clear();
+		requestEmailCode(first.cookie(), contested).andExpect(status().isNoContent());
+		String firstCode = awaitCodeSentTo(contested);
+		this.mailbox.clear();
+		requestEmailCode(second.cookie(), contested).andExpect(status().isNoContent());
+		String secondCode = awaitCodeSentTo(contested);
+
+		List<Integer> statuses = runTogether(
+				() -> changeEmail(first.cookie(), contested, firstCode, PASSWORD).andReturn().getResponse().getStatus(),
+				() -> changeEmail(second.cookie(), contested, secondCode, PASSWORD).andReturn().getResponse()
+						.getStatus());
+
+		assertThat(statuses).containsExactlyInAnyOrder(200, 409);
+		assertThat(this.users.findByEmail(contested)).isPresent();
+	}
+
+	@Test
+	void twoConfirmsOfTheSamePasswordCodeAtOnceYieldOneSuccessAndOneInvalidCode() throws Exception {
+		Account account = verifiedAccount();
+		this.mailbox.clear();
+		requestPasswordCode(account.cookie()).andExpect(status().isNoContent());
+		String code = awaitCodeSentTo(account.email());
+
+		List<Integer> statuses = runTogether(
+				() -> changePassword(account.cookie(), code, PASSWORD, NEW_PASSWORD).andReturn().getResponse()
+						.getStatus(),
+				() -> changePassword(account.cookie(), code, PASSWORD, "terceira-senha-grande").andReturn()
+						.getResponse().getStatus());
+
+		assertThat(statuses).containsOnlyOnce(200).allMatch(httpStatus -> httpStatus == 200 || httpStatus == 400 || httpStatus == 403);
+	}
+
+	@Test
 	void theTargetUserAlwaysComesFromTheSession() throws Exception {
 		Account attacker = verifiedAccount();
 		Account victim = verifiedAccount();
@@ -422,6 +486,29 @@ class AccountFlowTests {
 			return true;
 		});
 		return found[0];
+	}
+
+	@SafeVarargs
+	private static List<Integer> runTogether(Callable<Integer>... requests) throws Exception {
+		CyclicBarrier barrier = new CyclicBarrier(requests.length);
+		ExecutorService pool = Executors.newFixedThreadPool(requests.length);
+		try {
+			List<Future<Integer>> pending = new ArrayList<>();
+			for (Callable<Integer> request : requests) {
+				pending.add(pool.submit(() -> {
+					barrier.await(5, TimeUnit.SECONDS);
+					return request.call();
+				}));
+			}
+			List<Integer> statuses = new ArrayList<>();
+			for (Future<Integer> result : pending) {
+				statuses.add(result.get(30, TimeUnit.SECONDS));
+			}
+			return statuses;
+		}
+		finally {
+			pool.shutdownNow();
+		}
 	}
 
 	private static String otherThan(String code) {

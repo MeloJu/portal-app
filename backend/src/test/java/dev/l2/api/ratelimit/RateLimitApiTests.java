@@ -96,6 +96,21 @@ class RateLimitApiTests {
 	}
 
 	@Test
+	void emailAndPasswordChangesShareTheSameBudgetPerAddress() throws Exception {
+		Cookie session = register("10.1.0.30").cookie();
+		String address = "10.1.0.31";
+
+		accountPost("/api/account/email", session, address).andExpect(status().isBadRequest());
+		accountPost("/api/account/password", session, address).andExpect(status().isBadRequest());
+
+		accountPost("/api/account/password", session, address)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMIT"));
+		accountPost("/api/account/email", session, address).andExpect(status().isTooManyRequests());
+		accountPost("/api/account/password", session, "10.1.0.32").andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void keepsTheBudgetPerAddress() throws Exception {
 		String email = register("10.1.0.2").email();
 

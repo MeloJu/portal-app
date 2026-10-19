@@ -418,7 +418,7 @@ components:
       properties:
         code: { type: string, pattern: '^[0-9]{6}$' }
         currentPassword: { type: string }
-        newPassword: { type: string, minLength: 8, maxLength: 72 }
+        newPassword: { type: string, minLength: 8, maxLength: 72, description: 'No máximo 72 bytes em UTF-8 (caracteres acentuados ocupam mais de 1 byte); acima disso responde 400 VALIDATION_ERROR' }
     AuthResponse:
       type: object
       description: O token não vem no corpo; viaja no cookie de sessão.

@@ -29,9 +29,19 @@ public record AppProperties(
 
 		@DefaultValue @Valid Session session,
 
-		@DefaultValue @Valid RateLimit rateLimit) {
+		@DefaultValue @Valid RateLimit rateLimit,
+
+		@DefaultValue @Valid Mail mail) {
 
 	private static final int MINIMUM_SECRET_BYTES = 32;
+
+	public record Mail(
+
+			@DefaultValue("false") boolean enabled,
+
+			@DefaultValue("no-reply@lumi.local") @NotBlank String from) {
+
+	}
 
 	public record Session(@DefaultValue("true") boolean secureCookie) {
 

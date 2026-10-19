@@ -92,6 +92,32 @@ class AppPropertiesTest {
 				.run(context -> assertThat(context).hasFailed());
 	}
 
+	@Test
+	void mailDefaultsToDisabledWithLocalSender() {
+		runner.withPropertyValues(
+				"app.public-base-url=https://l2.to",
+				"app.jwt.secret=" + STRONG_SECRET)
+				.run(context -> {
+					AppProperties.Mail mail = context.getBean(AppProperties.class).mail();
+					assertThat(mail.enabled()).isFalse();
+					assertThat(mail.from()).isEqualTo("no-reply@lumi.local");
+				});
+	}
+
+	@Test
+	void mailBindsOverrides() {
+		runner.withPropertyValues(
+				"app.public-base-url=https://l2.to",
+				"app.jwt.secret=" + STRONG_SECRET,
+				"app.mail.enabled=true",
+				"app.mail.from=lumi@example.com")
+				.run(context -> {
+					AppProperties.Mail mail = context.getBean(AppProperties.class).mail();
+					assertThat(mail.enabled()).isTrue();
+					assertThat(mail.from()).isEqualTo("lumi@example.com");
+				});
+	}
+
 	@Configuration(proxyBeanMethods = false)
 	@EnableConfigurationProperties(AppProperties.class)
 	static class TestConfig {

@@ -6102,3 +6102,92 @@ html[data-theme="dark"] .code-modal-inputs input {
   color: #ffe9a8;
   font-size: 12px;
 }
+
+.account-flow {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 17px;
+}
+
+.account-flow-form {
+  display: grid;
+  gap: 10px;
+  max-width: 340px;
+}
+
+.account-flow-form label {
+  display: grid;
+  gap: 6px;
+  color: #7f7d90;
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.account-flow-form input {
+  width: 100%;
+  border: 1px solid #e3dfed;
+  border-radius: 9px;
+  outline: none;
+  padding: 10px 11px;
+  color: #444154;
+  background: #faf9fd;
+  font: 9px "DM Sans", sans-serif;
+}
+
+.account-flow-form input:focus {
+  border-color: #8971dd;
+  box-shadow: 0 0 0 3px rgba(117, 87, 216, 0.1);
+}
+
+.account-flow-form input[aria-invalid="true"] {
+  border-color: #d6336c;
+}
+
+.account-flow-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.account-flow-trigger,
+.account-flow-submit,
+.account-flow-cancel {
+  justify-self: start;
+  border: 1px solid #d9d3ec;
+  border-radius: 10px;
+  padding: 9px 14px;
+  color: #654bca;
+  background: #efebfc;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.account-flow-submit {
+  border: 0;
+  color: white;
+  background: linear-gradient(135deg, #7558ee, #5133d2);
+}
+
+.account-flow-trigger:disabled,
+.account-flow-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.account-flow-hint {
+  margin: 0;
+  color: #7f7d90;
+  font-size: 9px;
+}
+
+.account-flow-error {
+  margin: 0;
+  color: #d6336c;
+  font-size: 9px;
+}
+
+.account-flow-success {
+  margin: 0;
+  color: #2f9e6e;
+  font-size: 9px;
+  font-weight: 600;
+}

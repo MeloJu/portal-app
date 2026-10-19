@@ -2,7 +2,7 @@ package dev.l2.api.account;
 
 import java.time.Duration;
 
-public class CodeRequestTooSoonException extends RuntimeException {
+public class CodeRequestTooSoonException extends AccountCodeException {
 
 	private final Duration retryAfter;
 

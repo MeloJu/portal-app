@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.random.RandomGenerator;
 import java.util.regex.Pattern;
 
@@ -26,8 +27,6 @@ public class AccountCodeService {
 
 	private final CodeHasher hasher;
 
-	private final AccountCodeAttempts attempts;
-
 	private final AppProperties.Codes settings;
 
 	private final Clock clock;
@@ -35,16 +34,15 @@ public class AccountCodeService {
 	private final RandomGenerator random;
 
 	@Autowired
-	public AccountCodeService(AccountCodeRepository codes, CodeHasher hasher, AccountCodeAttempts attempts,
+	public AccountCodeService(AccountCodeRepository codes, CodeHasher hasher,
 			AppProperties properties) {
-		this(codes, hasher, attempts, properties, Clock.systemUTC(), new SecureRandom());
+		this(codes, hasher, properties, Clock.systemUTC(), new SecureRandom());
 	}
 
-	AccountCodeService(AccountCodeRepository codes, CodeHasher hasher, AccountCodeAttempts attempts,
+	AccountCodeService(AccountCodeRepository codes, CodeHasher hasher,
 			AppProperties properties, Clock clock, RandomGenerator random) {
 		this.codes = codes;
 		this.hasher = hasher;
-		this.attempts = attempts;
 		this.settings = properties.codes();
 		this.clock = clock;
 		this.random = random;
@@ -52,7 +50,7 @@ public class AccountCodeService {
 
 	@Transactional
 	public String issue(User user, AccountCodePurpose purpose, String newEmailOrNull) {
-		this.codes.lockIssuance(user.getId() + ":" + purpose);
+		this.codes.lockIssuance("account-code:" + user.getId() + ":" + purpose);
 		Instant now = this.clock.instant();
 		requireNotTooSoon(user, purpose, now);
 		this.codes.invalidateActive(user.getId(), purpose, now);
@@ -63,7 +61,7 @@ public class AccountCodeService {
 		return code;
 	}
 
-	@Transactional
+	@Transactional(noRollbackFor = AccountCodeException.class)
 	public AccountCode consume(User user, AccountCodePurpose purpose, String submittedCode,
 			String expectedNewEmailOrNull) {
 		if (submittedCode == null || !SIX_DIGITS.matcher(submittedCode).matches()) {
@@ -82,9 +80,7 @@ public class AccountCodeService {
 			throw new CodeExpiredException();
 		}
 		if (!matches(user, purpose, submittedCode, expectedNewEmailOrNull, code)) {
-			if (!this.attempts.registerFailure(code.getId())) {
-				throw new CodeAttemptsExceededException();
-			}
+			registerWrongAttempt(code.getId(), now);
 			throw new CodeInvalidException();
 		}
 		if (this.codes.markUsedIfUnused(code.getId(), now, this.settings.maxAttempts()) == 0) {
@@ -95,6 +91,14 @@ public class AccountCodeService {
 		}
 		code.markUsed(now);
 		return code;
+	}
+
+	private void registerWrongAttempt(UUID codeId, Instant now) {
+		int maxAttempts = this.settings.maxAttempts();
+		if (this.codes.incrementAttempts(codeId, maxAttempts) == 0) {
+			throw new CodeAttemptsExceededException();
+		}
+		this.codes.invalidateIfExhausted(codeId, maxAttempts, now);
 	}
 
 	private boolean matches(User user, AccountCodePurpose purpose, String submittedCode, String expectedNewEmail,

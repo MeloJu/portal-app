@@ -12,6 +12,9 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -51,6 +54,15 @@ class AccountCodeServiceTests {
 
 	@Autowired
 	private CodeHasher hasher;
+
+	@Autowired
+	private CallerService caller;
+
+	@Autowired
+	private TransactionTemplate transactions;
+
+	@Autowired
+	private JdbcTemplate jdbc;
 
 	@Autowired
 	private MutableClock clock;
@@ -331,19 +343,100 @@ class AccountCodeServiceTests {
 	}
 
 	@Test
-	void correctGuessAmongConcurrentWrongOnesIsRejectedOnceTheLimitIsReached() throws Exception {
+	void fifthWrongAttemptArrivingBetweenReadAndUpdateRejectsTheCorrectGuess() throws Exception {
 		this.random.script(246_802);
 		String code = this.service.issue(this.user, AccountCodePurpose.PASSWORD_CHANGE, null);
-		runConcurrently(List.of(consuming(this.user, "654321"), consuming(this.user, "654322"),
-				consuming(this.user, "654323"), consuming(this.user, "654324")));
+		for (int attempt = 0; attempt < 4; attempt++) {
+			assertThatThrownBy(() -> this.service.consume(this.user, AccountCodePurpose.PASSWORD_CHANGE, "654321", null))
+					.isInstanceOf(CodeInvalidException.class);
+		}
+		UUID codeId = latest(this.user, AccountCodePurpose.PASSWORD_CHANGE).getId();
+		CountDownLatch rowLocked = new CountDownLatch(1);
+		CountDownLatch releaseRow = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		try {
+			Future<?> fifthWrongAttempt = executor.submit(() -> this.transactions.executeWithoutResult(status -> {
+				this.codes.incrementAttempts(codeId, 5);
+				rowLocked.countDown();
+				awaitQuietly(releaseRow);
+			}));
+			rowLocked.await();
+			Future<Object> correctGuess = executor.submit(consuming(this.user, code));
+			awaitBlockedOnRowLock();
+			releaseRow.countDown();
+			fifthWrongAttempt.get(30, TimeUnit.SECONDS);
 
-		List<Object> results = runConcurrently(List.of(consuming(this.user, "654325"),
-				consuming(this.user, "654326"), consuming(this.user, code), consuming(this.user, "654327")));
+			assertThatThrownBy(() -> correctGuess.get(30, TimeUnit.SECONDS))
+					.hasCauseInstanceOf(CodeAttemptsExceededException.class);
+		}
+		finally {
+			executor.shutdownNow();
+		}
+		AccountCode stored = latest(this.user, AccountCodePurpose.PASSWORD_CHANGE);
+		assertThat(stored.getAttempts()).isEqualTo(5);
+		assertThat(stored.getUsedAt()).isNull();
+	}
 
-		assertThat(latest(this.user, AccountCodePurpose.PASSWORD_CHANGE).getAttempts()).isLessThanOrEqualTo(5);
-		assertThat(count(results, AccountCode.class)).isLessThanOrEqualTo(1);
-		assertThat(count(results, CodeInvalidException.class) + count(results, CodeAttemptsExceededException.class)
-				+ count(results, AccountCode.class)).isEqualTo(4);
+	private void awaitBlockedOnRowLock() throws InterruptedException {
+		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+		while (System.nanoTime() < deadline) {
+			Integer blocked = this.jdbc.queryForObject(
+					"select count(*) from pg_stat_activity where wait_event_type = 'Lock'", Integer.class);
+			if (blocked != null && blocked > 0) {
+				return;
+			}
+			Thread.sleep(25);
+		}
+		throw new AssertionError("o consume nunca ficou bloqueado na linha do código");
+	}
+
+	private static void awaitQuietly(CountDownLatch latch) {
+		try {
+			latch.await();
+		}
+		catch (InterruptedException interrupted) {
+			Thread.currentThread().interrupt();
+		}
+	}
+
+	@Test
+	void wrongGuessesFromManyUsersAtOnceDoNotExhaustTheConnectionPool() throws Exception {
+		int simultaneous = 12;
+		List<User> owners = new ArrayList<>();
+		for (int index = 0; index < simultaneous; index++) {
+			User owner = createUser();
+			this.service.issue(owner, AccountCodePurpose.PASSWORD_CHANGE, null);
+			owners.add(owner);
+		}
+		List<Callable<Object>> tasks = new ArrayList<>();
+		for (User owner : owners) {
+			tasks.add(consuming(owner, "000000"));
+		}
+
+		long started = System.nanoTime();
+		List<Object> results = runConcurrently(tasks);
+		Duration elapsed = Duration.ofNanos(System.nanoTime() - started);
+
+		assertThat(elapsed).isLessThan(Duration.ofSeconds(15));
+		assertThat(results).hasSize(simultaneous).allMatch(result -> result instanceof CodeInvalidException
+				|| (result instanceof AccountCode));
+		assertThat(count(results, CodeInvalidException.class) + count(results, AccountCode.class))
+				.isEqualTo(simultaneous);
+		for (User owner : owners) {
+			assertThat(latest(owner, AccountCodePurpose.PASSWORD_CHANGE).getAttempts())
+					.isLessThanOrEqualTo(1);
+		}
+	}
+
+	@Test
+	void callerDeclaringNoRollbackForAccountCodeExceptionKeepsTheWrongAttempt() {
+		this.random.script(808_080);
+		this.service.issue(this.user, AccountCodePurpose.PASSWORD_CHANGE, null);
+
+		assertThatThrownBy(() -> this.caller.consumeInsideCallerTransaction(this.user, "654321"))
+				.isInstanceOf(CodeInvalidException.class);
+
+		assertThat(latest(this.user, AccountCodePurpose.PASSWORD_CHANGE).getAttempts()).isEqualTo(1);
 	}
 
 	@Test
@@ -378,6 +471,21 @@ class AccountCodeServiceTests {
 				.filter(stored -> stored.getUsedAt() == null)
 				.count();
 		assertThat(active).isEqualTo(1);
+	}
+
+	static class CallerService {
+
+		private final AccountCodeService service;
+
+		CallerService(AccountCodeService service) {
+			this.service = service;
+		}
+
+		@Transactional(noRollbackFor = AccountCodeException.class)
+		public AccountCode consumeInsideCallerTransaction(User user, String code) {
+			return this.service.consume(user, AccountCodePurpose.PASSWORD_CHANGE, code, null);
+		}
+
 	}
 
 	static class MutableClock extends Clock {
@@ -453,17 +561,14 @@ class AccountCodeServiceTests {
 
 		@Bean
 		@Primary
-		AccountCodeAttempts controlledAttempts(AccountCodeRepository codes, AppProperties properties,
-				MutableClock clock) {
-			return new AccountCodeAttempts(codes, properties, clock);
+		AccountCodeService controlledService(AccountCodeRepository codes, CodeHasher hasher,
+				AppProperties properties, MutableClock clock, ScriptedRandom random) {
+			return new AccountCodeService(codes, hasher, properties, clock, random);
 		}
 
 		@Bean
-		@Primary
-		AccountCodeService controlledService(AccountCodeRepository codes, CodeHasher hasher,
-				AccountCodeAttempts controlledAttempts, AppProperties properties, MutableClock clock,
-				ScriptedRandom random) {
-			return new AccountCodeService(codes, hasher, controlledAttempts, properties, clock, random);
+		CallerService callerService(AccountCodeService controlledService) {
+			return new CallerService(controlledService);
 		}
 
 	}

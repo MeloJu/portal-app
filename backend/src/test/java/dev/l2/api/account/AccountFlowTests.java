@@ -52,6 +52,8 @@ class AccountFlowTests {
 
 	private static final String NEW_PASSWORD = "outra-senha-grande";
 
+	private static final String WRONG_PASSWORD = "errada-errada";
+
 	private static final Pattern SIX_DIGITS = Pattern.compile("(?m)^(\\d{6})$");
 
 	@Autowired
@@ -155,7 +157,7 @@ class AccountFlowTests {
 		String code = awaitCodeSentTo(account.email());
 
 		for (int attempt = 0; attempt < 6; attempt++) {
-			changePassword(account.cookie(), code, "senha-errada-1", NEW_PASSWORD)
+			changePassword(account.cookie(), code, WRONG_PASSWORD, NEW_PASSWORD)
 					.andExpect(status().isForbidden())
 					.andExpect(jsonPath("$.code").value("WRONG_PASSWORD"));
 		}
@@ -171,7 +173,7 @@ class AccountFlowTests {
 		requestEmailCode(account.cookie(), newEmail).andExpect(status().isNoContent());
 		String code = awaitCodeSentTo(newEmail);
 
-		changeEmail(account.cookie(), newEmail, code, "senha-errada-1")
+		changeEmail(account.cookie(), newEmail, code, WRONG_PASSWORD)
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("WRONG_PASSWORD"));
 
@@ -220,7 +222,7 @@ class AccountFlowTests {
 		String code = awaitCodeSentTo(account.email());
 		changePassword(account.cookie(), code, PASSWORD, NEW_PASSWORD).andExpect(status().isOk());
 
-		changePassword(account.cookie(), code, NEW_PASSWORD, "mais-uma-senha-1")
+		changePassword(account.cookie(), code, NEW_PASSWORD, PASSWORD)
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("CODE_INVALID"));
 		login(account.email(), NEW_PASSWORD).andExpect(status().isOk());
@@ -342,7 +344,7 @@ class AccountFlowTests {
 		assertThat(this.users.findById(victimBefore.getId()).orElseThrow().getPasswordHash())
 				.isEqualTo(victimBefore.getPasswordHash());
 
-		changePassword(victim.cookie(), attackerCode, PASSWORD, "senha-do-intruso-1")
+		changePassword(victim.cookie(), attackerCode, PASSWORD, NEW_PASSWORD)
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("CODE_INVALID"));
 		changeEmail(victim.cookie(), hijacked, attackerCode, PASSWORD)

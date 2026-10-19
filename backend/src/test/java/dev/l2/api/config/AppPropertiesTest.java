@@ -22,6 +22,9 @@ class AppPropertiesTest {
 	private static final String STRONG_SECRET = Base64.getEncoder()
 			.encodeToString("chave-de-teste-com-32-bytes-ok!!".getBytes(StandardCharsets.UTF_8));
 
+	private static final String STRONG_PEPPER = Base64.getEncoder()
+			.encodeToString("pepper-de-teste-com-32-bytes-ok!".getBytes(StandardCharsets.UTF_8));
+
 	private final ApplicationContextRunner runner = new ApplicationContextRunner()
 			.withConfiguration(AutoConfigurations.of(ValidationAutoConfiguration.class))
 			.withUserConfiguration(TestConfig.class);
@@ -30,12 +33,14 @@ class AppPropertiesTest {
 	void bindsWhenSecretIsStrongEnough() {
 		runner.withPropertyValues(
 				"app.public-base-url=https://l2.to",
-				"app.jwt.secret=" + STRONG_SECRET)
+				"app.jwt.secret=" + STRONG_SECRET,
+				"app.codes.pepper=" + STRONG_PEPPER)
 				.run(context -> {
 					assertThat(context).hasNotFailed();
 					AppProperties properties = context.getBean(AppProperties.class);
 					assertThat(properties.publicBaseUrl()).isEqualTo("https://l2.to");
 					assertThat(properties.jwt().secret()).isEqualTo(STRONG_SECRET);
+					assertThat(properties.codes().pepper()).isEqualTo(STRONG_PEPPER);
 				});
 	}
 
@@ -49,13 +54,32 @@ class AppPropertiesTest {
 	void failsWhenSecretIsShorterThan256Bits() {
 		runner.withPropertyValues(
 				"app.public-base-url=https://l2.to",
-				"app.jwt.secret=segredo-curto")
+				"app.jwt.secret=segredo-curto",
+				"app.codes.pepper=" + STRONG_PEPPER)
+				.run(context -> assertThat(context).hasFailed());
+	}
+
+	@Test
+	void failsWhenPepperIsMissing() {
+		runner.withPropertyValues(
+				"app.public-base-url=https://l2.to",
+				"app.jwt.secret=" + STRONG_SECRET)
+				.run(context -> assertThat(context).hasFailed());
+	}
+
+	@Test
+	void failsWhenPepperIsShorterThan256Bits() {
+		runner.withPropertyValues(
+				"app.public-base-url=https://l2.to",
+				"app.jwt.secret=" + STRONG_SECRET,
+				"app.codes.pepper=pepper-curto")
 				.run(context -> assertThat(context).hasFailed());
 	}
 
 	@Test
 	void failsWhenPublicBaseUrlIsMissing() {
-		runner.withPropertyValues("app.jwt.secret=" + STRONG_SECRET)
+		runner.withPropertyValues("app.jwt.secret=" + STRONG_SECRET,
+				"app.codes.pepper=" + STRONG_PEPPER)
 				.run(context -> assertThat(context).hasFailed());
 	}
 
@@ -63,7 +87,8 @@ class AppPropertiesTest {
 	void failsWhenPublicBaseUrlIsNotHttp() {
 		runner.withPropertyValues(
 				"app.public-base-url=javascript:alert(1)",
-				"app.jwt.secret=" + STRONG_SECRET)
+				"app.jwt.secret=" + STRONG_SECRET,
+				"app.codes.pepper=" + STRONG_PEPPER)
 				.run(context -> assertThat(context).hasFailed());
 	}
 

@@ -27,6 +27,7 @@ export default defineConfig({
         SESSION_COOKIE_SECURE: "false",
         APP_RATELIMIT_ENABLED: "false",
         JWT_SECRET: randomBytes(32).toString("base64"),
+        APP_CODE_PEPPER: randomBytes(32).toString("base64"),
       },
     },
     {

@@ -19,6 +19,8 @@ app:
   jwt:
     secret: ${JWT_SECRET}
     ttl: 8h
+  codes:
+    pepper: ${APP_CODE_PEPPER}
   session:
     secure-cookie: ${SESSION_COOKIE_SECURE:true}
   # GeoLite2-Country.mmdb da MaxMind, fora do Git (backend/docs/GEOIP.md). Vazio = GeoIP desligado.

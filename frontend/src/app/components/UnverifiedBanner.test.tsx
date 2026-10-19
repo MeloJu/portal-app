@@ -29,7 +29,7 @@ describe("UnverifiedBanner", () => {
     setup();
     expect(
       screen.getByText(
-        "Confirme seu e-mail para criar portais. Enviamos um link para ana@lumi.dev, válido por 30 minutos.",
+        "Confirme seu e-mail para criar portais. Enviamos um link para ana@lumi.dev. Se ele expirou, peça outro.",
       ),
     ).toBeInTheDocument();
     expect(resendButton()).toBeEnabled();
@@ -80,6 +80,23 @@ describe("UnverifiedBanner", () => {
 
     expect(onRevalidate).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("401 no reenvio revalida para o loader mandar ao login, sem mostrar erro", async () => {
+    resendVerification.mockRejectedValue(new auth.AuthError(401, "UNAUTHORIZED", "Sessão expirada"));
+    const { onRevalidate } = setup();
+    await click(resendButton());
+
+    expect(onRevalidate).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("depois do reenvio fala do novo link com a validade de 30 minutos", async () => {
+    resendVerification.mockResolvedValue();
+    setup();
+    expect(screen.queryByText(/30 minutos/)).not.toBeInTheDocument();
+    await click(resendButton());
+    expect(screen.getByRole("status")).toHaveTextContent("Enviamos um novo link, válido por 30 minutos");
   });
 
   it("outro erro aparece em alert e não trava o botão", async () => {

@@ -299,6 +299,13 @@ describe("Dashboard", () => {
       expect(screen.getByRole("button", { name: /criar portal/i })).toBeEnabled();
     });
 
+    it("quando o banner some, o foco vai para o título da página", async () => {
+      renderWithUser(unverified, { ...unverified, emailVerified: true });
+      await userEvent.click(await screen.findByRole("button", { name: /já verifiquei/i }));
+      await vi.waitFor(() => expect(screen.queryByText(/enviamos um link/i)).not.toBeInTheDocument());
+      expect(screen.getByRole("heading", { level: 1 })).toHaveFocus();
+    });
+
     it("403 EMAIL_NOT_VERIFIED na criação revalida o usuário e passa a bloquear", async () => {
       renderWithUser({ ...unverified, emailVerified: true }, unverified);
       vi.mocked(links.createLink).mockRejectedValue(new links.LinkError(403, "EMAIL_NOT_VERIFIED", "x"));

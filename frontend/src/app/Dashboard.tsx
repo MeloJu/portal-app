@@ -52,6 +52,18 @@ export default function Dashboard() {
   const user = useRouteLoaderData("dashboard") as User | undefined;
   const { revalidate } = useRevalidator();
   const isUnverified = Boolean(user) && !user?.emailVerified;
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const wasUnverifiedRef = useRef(isUnverified);
+
+  useEffect(() => {
+    const bannerJustLeft = wasUnverifiedRef.current && !isUnverified;
+    wasUnverifiedRef.current = isUnverified;
+    const focused = document.activeElement;
+    const focusLost = !focused || focused === document.body || !document.body.contains(focused);
+    if (bannerJustLeft && focusLost) {
+      titleRef.current?.focus();
+    }
+  }, [isUnverified]);
   const userName = user?.name ?? "Exploradora";
   const firstName = userName.split(/\s+/).find(Boolean) ?? userName;
   const initials = userName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]!.toUpperCase()).join("") || "?";
@@ -209,7 +221,7 @@ export default function Dashboard() {
         <header className="topbar">
           <div>
             <p className="eyebrow">{pageEyebrow}</p>
-            <h1>{pageTitle}</h1>
+            <h1 ref={titleRef} tabIndex={-1}>{pageTitle}</h1>
           </div>
           <div className="top-actions">
             <span className="status"><i /> Todos os sistemas online</span>

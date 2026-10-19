@@ -31,7 +31,7 @@ export default function UnverifiedBanner({ email, onRevalidate }: Props) {
       setSent(true);
       setCooldown(DEFAULT_COOLDOWN_SECONDS);
     } catch (err) {
-      if (err instanceof AuthError && err.isEmailAlreadyVerified) {
+      if (err instanceof AuthError && (err.isEmailAlreadyVerified || err.status === 401)) {
         onRevalidate();
       } else if (err instanceof AuthError && err.isRateLimited) {
         setCooldown(err.retryAfterSeconds ?? DEFAULT_COOLDOWN_SECONDS);
@@ -46,7 +46,7 @@ export default function UnverifiedBanner({ email, onRevalidate }: Props) {
 
   return (
     <section className="unverified-banner" aria-label="Confirmação de e-mail">
-      <p>Confirme seu e-mail para criar portais. Enviamos um link para {email}, válido por 30 minutos.</p>
+      <p>Confirme seu e-mail para criar portais. Enviamos um link para {email}. Se ele expirou, peça outro.</p>
       <div className="unverified-banner-actions">
         <button disabled={sending || coolingDown} onClick={resend} type="button">
           {coolingDown ? `Reenviar e-mail (${cooldown}s)` : "Reenviar e-mail"}
@@ -56,7 +56,7 @@ export default function UnverifiedBanner({ email, onRevalidate }: Props) {
         </button>
       </div>
       <p className="unverified-banner-feedback" role="status" aria-live="polite">
-        {sent ? "E-mail reenviado" : ""}
+        {sent ? "E-mail reenviado. Enviamos um novo link, válido por 30 minutos." : ""}
       </p>
       {error && (
         <p className="unverified-banner-error" role="alert">

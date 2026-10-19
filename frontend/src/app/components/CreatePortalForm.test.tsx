@@ -180,10 +180,27 @@ describe("CreatePortalForm", () => {
     const onEmailNotVerified = vi.fn();
     render(<CreatePortalForm minOpeningMs={0} onEmailNotVerified={onEmailNotVerified} />);
     await fill("exemplo.com");
-    expect(await screen.findByText("Confirme seu e-mail para criar portais")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/^Confirme seu e-mail para criar portais. Se você já confirmou/),
+    ).toBeInTheDocument();
     expect(onEmailNotVerified).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: /criar portal/i })).toBeDisabled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("403 com o loader dizendo verificado: a razão é um status e editar o link destrava o form", async () => {
+    createLink.mockRejectedValueOnce(new api.LinkError(403, "EMAIL_NOT_VERIFIED", "x"));
+    createLink.mockResolvedValueOnce(link);
+    render(<CreatePortalForm minOpeningMs={0} />);
+    await fill("exemplo.com");
+    expect(await screen.findByRole("status")).toHaveTextContent(/se você já confirmou/i);
+    expect(screen.getByRole("button", { name: /criar portal/i })).toBeDisabled();
+
+    await userEvent.type(screen.getByPlaceholderText(/cole seu link longo/i), "/novo");
+    expect(screen.getByRole("button", { name: /criar portal/i })).toBeEnabled();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /criar portal/i }));
+    expect(await screen.findByText(/portal aberto com sucesso/i)).toBeInTheDocument();
   });
 
   it("outro 403 continua sendo erro comum", async () => {

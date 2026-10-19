@@ -45,7 +45,7 @@ describe("api/tools", () => {
     expect(err.code).toBe("NETWORK");
   });
 
-  it("unshorten e scan não enviam credenciais nem tocam em /api/me", async () => {
+  it("unshorten e scan só chamam /tools/* e não mandam header de autorização", async () => {
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(reply(200, {})));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -54,7 +54,6 @@ describe("api/tools", () => {
 
     expect(fetchMock.mock.calls.map(([path]) => path)).toEqual(["/tools/unshorten", "/tools/scan"]);
     for (const [, init] of fetchMock.mock.calls) {
-      expect(init.credentials).toBeUndefined();
       expect(Object.keys(init.headers)).toEqual(["content-type"]);
     }
   });

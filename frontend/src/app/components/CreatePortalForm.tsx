@@ -17,6 +17,7 @@ type Props = {
 };
 
 export const EMAIL_NOT_VERIFIED_MESSAGE = "Confirme seu e-mail para criar portais";
+const REJECTED_MESSAGE = `${EMAIL_NOT_VERIFIED_MESSAGE}. Se você já confirmou, edite o link e tente de novo.`;
 
 function isEmailNotVerified(err: unknown) {
   return (
@@ -55,7 +56,7 @@ export default function CreatePortalForm({
   const [copied, setCopied] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
   const [rejectedAsUnverified, setRejectedAsUnverified] = useState(false);
-  const blockedReason = disabledReason ?? (rejectedAsUnverified ? EMAIL_NOT_VERIFIED_MESSAGE : undefined);
+  const blockedReason = disabledReason ?? (rejectedAsUnverified ? REJECTED_MESSAGE : undefined);
 
   useEffect(() => () => window.clearTimeout(copiedTimerRef.current), []);
 
@@ -127,7 +128,10 @@ export default function CreatePortalForm({
           <span>{icons.link}</span>
           <input
             inputMode="url"
-            onChange={(event) => setUrl(event.target.value)}
+            onChange={(event) => {
+              setUrl(event.target.value);
+              setRejectedAsUnverified(false);
+            }}
             placeholder="Cole seu link longo aqui..."
             type="text"
             value={url}
@@ -152,7 +156,7 @@ export default function CreatePortalForm({
           {isOpening ? "Abrindo portal..." : "Criar portal"} {!isOpening && icons.arrow}
         </button>
         {blockedReason && (
-          <p className="create-portal-blocked" id="create-portal-blocked">
+          <p className="create-portal-blocked" id="create-portal-blocked" role="status">
             {blockedReason}
           </p>
         )}

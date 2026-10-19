@@ -113,6 +113,17 @@ describe("VerifyEmailPage", () => {
     expect(window.location.pathname).toBe("/verificar-email");
   });
 
+  it("com a sessão inacessível não gasta o token e tenta de novo com um único POST", async () => {
+    currentUser.mockRejectedValueOnce(new auth.AuthError(0, "NETWORK", "sem rede"));
+    renderVerify();
+    expect(await screen.findByRole("heading", { name: /estação está fora do ar/i })).toBeInTheDocument();
+    expect(verifyEmail).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: /tentar de novo/i }));
+    expect(await screen.findByRole("heading", { name: "E-mail confirmado!" })).toBeInTheDocument();
+    expect(verifyEmail).toHaveBeenCalledTimes(1);
+  });
+
   it("não deixa o token vazar pelo referrer", async () => {
     renderVerify();
     await screen.findByRole("heading", { level: 1 });

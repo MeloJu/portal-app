@@ -20,8 +20,9 @@ async function verificationStatus(token: string | null): Promise<VerifyEmailStat
 }
 
 async function verifyEmailLoader({ request }: { request: Request }): Promise<VerifyEmailData> {
+  const loggedIn = (await currentUser()) !== null;
   const status = await verificationStatus(new URL(request.url).searchParams.get("token"));
-  return { status, loggedIn: (await currentUser()) !== null };
+  return { status, loggedIn };
 }
 
 /** A sessão é o cookie da API: quem decide se há usuário logado é o /api/me. */
